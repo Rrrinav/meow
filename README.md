@@ -14,8 +14,8 @@ A common cli utility as a wrapper over 'cat' command and some more features I pe
 
 ### Requirements
 
-Any C++ compiler that supports C++23 standard.
-(I am using g++ (GCC) 15.0.1), so take it as minimum requirement.
+Any C++ compiler that supports C++23 standard.  
+I am using g++ (GCC) 15.0.1, so take it as minimum requirement.
 
 ### Building
 
