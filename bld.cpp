@@ -34,15 +34,11 @@ void handle_objs()
   std::vector<std::string> files = bld::fs::list_files_in_dir(SRC_FOLDER);
   std::vector<std::string> cpp_files;
 
-  for (const auto &f : files)
-    if (bld::fs::get_extension(f) == ".cpp")
-      cpp_files.push_back(f);
+  std::copy_if( files.begin(), files.end(), std::back_inserter(cpp_files), [](const std::string &f) { return bld::fs::get_extension(f) == ".cpp"; });
 
   for (const auto &f : cpp_files)
   {
-    std::string filename = bld::fs::get_file_name(f);
-    size_t dot = filename.find_last_of('.');
-    std::string stem = (dot == std::string::npos) ? filename : filename.substr(0, dot);
+    std::string stem = bld::fs::get_stem(f);
     std::string object_path = OBJ_FOLDER + stem + ".o";
 
     if (bld::is_executable_outdated(f, object_path))

@@ -5,8 +5,8 @@ This is what cat is actually supposed to do.
 A common cli utility as a wrapper over 'cat' command and some more features I personally need.
 
 > [!WARNING]
-> This is for linux only.
-> This is for my personal use. If it fits your usecase use it.
+> This is for linux only.  
+> This is for my personal use. If it fits your use-case, use it.
 
 ---
 

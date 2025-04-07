@@ -446,6 +446,13 @@ namespace bld
      */
     std::string get_extension(const std::string &path);
 
+    /* @brief: Get file name without extension
+     * @param path: Path to the file
+     * @param with_full_path: true to include full path, false to get only the file name
+     * @return: Get file name without extension, full string if no extension
+     */
+    std::string get_stem(const std::string &path, bool with_full_path = false);
+
     /* @brief: Create directory and all parent directories if they don't exist
      * @param path: Path to create
      * @return: true if successful, false otherwise
@@ -2276,6 +2283,14 @@ std::string bld::fs::get_extension(const std::string &path)
   }
   std::filesystem::path p(path);
   return p.extension().string();
+}
+
+std::string bld::fs::get_stem(const std::string &path, bool with_full_path)
+{
+  std::string filename = path;
+  if (!with_full_path) filename = bld::fs::get_file_name(path);
+  auto pos = filename.find_last_of('.');
+  return pos == std::string::npos ? filename : filename.substr(0, pos);
 }
 
 bool bld::fs::create_directory(const std::string &path)
