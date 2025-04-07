@@ -17,7 +17,6 @@
 #include <cctype>
 #include <expected>
 #include <format>
-#include <source_location>
 #include <print>
 
 namespace jsn
@@ -74,16 +73,25 @@ namespace jsn
 
     [[nodiscard]] std::string_view type_to_string(Value_type type) const
     {
-      switch (type) {
-        case Value_type::null:    return "null";
-        case Value_type::boolean: return "boolean";
-        case Value_type::number:  return "number";
-        case Value_type::string:  return "string";
-        case Value_type::array:   return "array";
-        case Value_type::object:  return "object";
-        default:                  return "unknown";
+      switch (type)
+      {
+        case Value_type::null:
+          return "null";
+        case Value_type::boolean:
+          return "boolean";
+        case Value_type::number:
+          return "number";
+        case Value_type::string:
+          return "string";
+        case Value_type::array:
+          return "array";
+        case Value_type::object:
+          return "object";
+        default:
+          return "unknown";
       }
     }
+
   public:
     // Constructors
     value() noexcept : data(std::monostate{}) {}
@@ -115,15 +123,33 @@ namespace jsn
 
     // Type checking methods
     [[nodiscard]] Value_type type() const noexcept { return get_type_from_index(); }
-    [[nodiscard]] bool is_null() const noexcept    { return std::holds_alternative<std::monostate>(data); }
+    [[nodiscard]] bool is_null() const noexcept { return std::holds_alternative<std::monostate>(data); }
     [[nodiscard]] bool is_boolean() const noexcept { return std::holds_alternative<bool>(data); }
-    [[nodiscard]] bool is_number() const noexcept  { return std::holds_alternative<double>(data); }
-    [[nodiscard]] bool is_string() const noexcept  { return std::holds_alternative<std::string>(data); }
-    [[nodiscard]] bool is_array() const noexcept   { return std::holds_alternative<array_type>(data); }
-    [[nodiscard]] bool is_object() const noexcept  { return std::holds_alternative<object_type>(data); }
+    [[nodiscard]] bool is_number() const noexcept { return std::holds_alternative<double>(data); }
+    [[nodiscard]] bool is_string() const noexcept { return std::holds_alternative<std::string>(data); }
+    [[nodiscard]] bool is_array() const noexcept { return std::holds_alternative<array_type>(data); }
+    [[nodiscard]] bool is_object() const noexcept { return std::holds_alternative<object_type>(data); }
 
+    template <typename T>
+    [[nodiscard]] T value_or(const T &fallback) const noexcept
+    {
+      return std::visit(
+          [&fallback](const auto &v) -> T
+          {
+            using V = std::decay_t<decltype(v)>;
+            if constexpr (std::is_same_v<V, std::monostate> || !std::is_same_v<V, T>)
+              return fallback;
+            else
+              return v;
+          },
+          data);
+    }
 
-    // Value access methods with type checking
+    operator bool() const { return as_boolean(); }
+    operator double() const { return as_number(); }
+    operator std::string() const { return as_string(); }
+    operator int() const { return static_cast<int>(as_number()); }
+
     [[nodiscard]] bool as_boolean() const
     {
       if (!is_boolean())
@@ -142,7 +168,7 @@ namespace jsn
 
     [[nodiscard]] const std::string &as_string() const
     {
-      if (!is_string()) 
+      if (!is_string())
         throw std::runtime_error(std::format("Type error: expected string, got {}", type_to_string(type())));
 
       return std::get<std::string>(data);
@@ -190,30 +216,47 @@ namespace jsn
     }
 
     // Array element access
-    [[nodiscard]] const value operator[](size_t index) const
+    [[nodiscard]] const value operator[](const std::size_t index) const
     {
       if (!is_array())
         throw std::runtime_error(std::format("Type error: expected array, got {}", type_to_string(type())));
-
       const auto &arr = std::get<array_type>(data);
-
       if (index >= arr.size())
         return value();
-
       return arr[index];
     }
 
-    // Object element access
-    [[nodiscard]] const value operator[](std::string_view key) const
+    [[nodiscard]] const value operator[](int index) const { return (*this)[static_cast<std::size_t>(index)]; }
+
+    // For string literals and const char*
+    [[nodiscard]] const value operator[](const char *key) const
     {
-      if (!is_object()) throw std::runtime_error(std::format("Type error: expected object, got {}", type_to_string(type())));
+      if (!is_object())
+        throw std::runtime_error(std::format("Type error: expected object, got {}", type_to_string(type())));
 
       const auto &obj = std::get<object_type>(data);
-      auto it = obj.find(std::string(key));
-      if (it == obj.end()) return value();
+      auto it = obj.find(key);
+      if (it == obj.end())
+        return value();
 
       return it->second;
     }
+
+    // For std::string
+    [[nodiscard]] const value operator[](const std::string &key) const
+    {
+      if (!is_object())
+        throw std::runtime_error(std::format("Type error: expected object, got {}", type_to_string(type())));
+
+      const auto &obj = std::get<object_type>(data);
+      auto it = obj.find(key);
+      if (it == obj.end())
+        return value();
+
+      return it->second;
+    }
+
+    // Keep your existing operator[] for size_t (array access) unchanged
 
     // Safe access with std::expected (C++23)
     [[nodiscard]] std::expected<bool, std::string> try_as_boolean() const noexcept
@@ -301,8 +344,8 @@ namespace jsn
   struct json_location
   {
     std::size_t position = 0;
-    std::size_t line     = 1;
-    std::size_t column   = 1;
+    std::size_t line = 1;
+    std::size_t column = 1;
     std::string filename = "<unknown>";
   };
 
@@ -348,8 +391,10 @@ namespace jsn
   private:
     std::string_view input;
     size_t pos = 0;
+
   public:
     std::string filename = "<unknown>";
+
   private:
     // Helper methods to skip whitespace and check if we're at the end
     void skip_whitespace() noexcept
@@ -382,8 +427,10 @@ namespace jsn
       // trim whitespace from start and end
       for (size_t i = begin_pos; i < end_pos; ++i)
       {
-        if (std::isalnum(input[i])) break;
-        if (input[i] == '\r' || input[i] == '\t' || std::isspace(input[i])) continue;
+        if (std::isalnum(input[i]))
+          break;
+        if (input[i] == '\r' || input[i] == '\t' || std::isspace(input[i]))
+          continue;
         begin_pos = i;
         break;
       }
@@ -398,7 +445,8 @@ namespace jsn
 
     [[nodiscard]] std::string parse_string()
     {
-      if (input[pos] != '"') throw make_error("Expected string");
+      if (input[pos] != '"')
+        throw make_error("Expected string");
       pos++;
 
       std::string result;
@@ -438,14 +486,18 @@ namespace jsn
               std::println(stderr, "Unicode not supported");
               exit(EXIT_FAILURE);
               // Unicode handling (simplified)
-              if (pos + 4 >= input.size()) throw make_error("Incomplete Unicode escape sequence");
+              if (pos + 4 >= input.size())
+                throw make_error("Incomplete Unicode escape sequence");
               // Convert hex digits to code point
               std::string hex = std::string(input.substr(pos + 1, 4));
               pos += 4;  // Skip the 4 hex digits
               // Basic implementation - would need more for full Unicode support
               char16_t code_point = static_cast<char16_t>(std::stoi(hex, nullptr, 16));
               // This is simplified UTF-16 to UTF-8 conversion
-              if (code_point < 0x80) { result.push_back(static_cast<char>(code_point)); }
+              if (code_point < 0x80)
+              {
+                result.push_back(static_cast<char>(code_point));
+              }
               else if (code_point < 0x800)
               {
                 result.push_back(static_cast<char>(0xC0 | (code_point >> 6)));
@@ -463,11 +515,15 @@ namespace jsn
               throw make_error(std::format("Invalid escape sequence '\\{}'", input[pos]));
           }
         }
-        else { result.push_back(input[pos]); }
+        else
+        {
+          result.push_back(input[pos]);
+        }
         pos++;
       }
 
-      if (pos >= input.size() || input[pos] != '"') throw make_error("Unterminated string");
+      if (pos >= input.size() || input[pos] != '"')
+        throw make_error("Unterminated string");
       pos++;  // Skip closing quote
 
       return result;
@@ -479,7 +535,8 @@ namespace jsn
       size_t start = pos;
 
       // Handle negative numbers
-      if (input[pos] == '-') pos++;
+      if (input[pos] == '-')
+        pos++;
 
       // Integer part
       if (input[pos] == '0')
@@ -493,7 +550,8 @@ namespace jsn
       if (pos < input.size() && input[pos] == '.')
       {
         pos++;
-        if (pos >= input.size() || !std::isdigit(input[pos])) throw make_error("Expected digit after decimal point");
+        if (pos >= input.size() || !std::isdigit(input[pos]))
+          throw make_error("Expected digit after decimal point");
         while (pos < input.size() && std::isdigit(input[pos])) pos++;
       }
 
@@ -501,8 +559,10 @@ namespace jsn
       if (pos < input.size() && (input[pos] == 'e' || input[pos] == 'E'))
       {
         pos++;
-        if (pos < input.size() && (input[pos] == '+' || input[pos] == '-')) pos++;
-        if (pos >= input.size() || !std::isdigit(input[pos])) throw make_error("Expected digit in exponent");
+        if (pos < input.size() && (input[pos] == '+' || input[pos] == '-'))
+          pos++;
+        if (pos >= input.size() || !std::isdigit(input[pos]))
+          throw make_error("Expected digit in exponent");
         while (pos < input.size() && std::isdigit(input[pos])) pos++;
       }
 
@@ -533,7 +593,10 @@ namespace jsn
         pos += 5;
         return false;
       }
-      else { throw make_error("Expected boolean"); }
+      else
+      {
+        throw make_error("Expected boolean");
+      }
     }
 
     // Parse a JSON null
@@ -548,7 +611,8 @@ namespace jsn
     // Parse a JSON array
     [[nodiscard]] value::array_type parse_array()
     {
-      if (input[pos] != '[') throw make_error("Expected array");
+      if (input[pos] != '[')
+        throw make_error("Expected array");
       pos++;  // Skip opening bracket
       skip_whitespace();
 
@@ -567,7 +631,8 @@ namespace jsn
         result.push_back(parse_value());
         skip_whitespace();
 
-        if (pos >= input.size()) throw make_error("Unterminated array");
+        if (pos >= input.size())
+          throw make_error("Unterminated array");
 
         if (input[pos] == ']')
         {
@@ -575,7 +640,8 @@ namespace jsn
           break;
         }
 
-        if (input[pos] != ',') throw make_error("Expected ',' in array");
+        if (input[pos] != ',')
+          throw make_error("Expected ',' in array");
         pos++;  // Skip comma
         skip_whitespace();
       }
@@ -586,7 +652,8 @@ namespace jsn
     // Parse a JSON object
     [[nodiscard]] value::object_type parse_object()
     {
-      if (input[pos] != '{') throw make_error("Expected object");
+      if (input[pos] != '{')
+        throw make_error("Expected object");
       pos++;  // Skip opening brace
       skip_whitespace();
 
@@ -604,12 +671,14 @@ namespace jsn
       {
         // Parse key (must be a string)
         skip_whitespace();
-        if (pos >= input.size() || input[pos] != '"') throw make_error("Expected string key in object");
+        if (pos >= input.size() || input[pos] != '"')
+          throw make_error("Expected string key in object");
         std::string key = parse_string();
 
         // Parse colon
         skip_whitespace();
-        if (pos >= input.size() || input[pos] != ':') throw make_error("Expected ':' in object");
+        if (pos >= input.size() || input[pos] != ':')
+          throw make_error("Expected ':' in object");
         pos++;  // Skip colon
 
         // Parse value
@@ -617,7 +686,8 @@ namespace jsn
         result[key] = parse_value();
         skip_whitespace();
 
-        if (pos >= input.size()) throw make_error("Unterminated object");
+        if (pos >= input.size())
+          throw make_error("Unterminated object");
 
         if (input[pos] == '}')
         {
@@ -625,7 +695,8 @@ namespace jsn
           break;
         }
 
-        if (input[pos] != ',') throw make_error("Expected ',' in object");
+        if (input[pos] != ',')
+          throw make_error("Expected ',' in object");
         pos++;  // Skip comma
       }
 
@@ -637,7 +708,8 @@ namespace jsn
     {
       skip_whitespace();
 
-      if (is_end()) throw make_error("Unexpected end of input");
+      if (is_end())
+        throw make_error("Unexpected end of input");
 
       switch (input[pos])
       {
@@ -679,13 +751,15 @@ namespace jsn
       value result = parse_value();
       skip_whitespace();
 
-      if (!is_end()) throw make_error("Expected end of input");
+      if (!is_end())
+        throw make_error("Expected end of input");
 
       return result;
     }
 
     // Static convenience method
-    [[nodiscard]] static std::expected<value, parse_error> try_parse(std::string_view json_str, std::string filename = "<config file>") noexcept
+    [[nodiscard]] static std::expected<value, parse_error> try_parse(std::string_view json_str,
+                                                                     std::string filename = "<config file>") noexcept
     {
       try
       {
@@ -737,13 +811,15 @@ namespace jsn
         case Value_type::array:
         {
           const auto &arr = v.as_array();
-          if (arr.empty()) return "[]";
+          if (arr.empty())
+            return "[]";
 
           std::string result = "[\n";
           for (size_t i = 0; i < arr.size(); ++i)
           {
             result += indent(level + 1) + print_internal(arr[i], level + 1);
-            if (i < arr.size() - 1) result += ",";
+            if (i < arr.size() - 1)
+              result += ",";
             result += "\n";
           }
           result += indent(level) + "]";
@@ -753,14 +829,16 @@ namespace jsn
         case Value_type::object:
         {
           const auto &obj = v.as_object();
-          if (obj.empty()) return "{}";
+          if (obj.empty())
+            return "{}";
 
           std::string result = "{\n";
           size_t i = 0;
           for (const auto &[key, value] : obj)
           {
             result += indent(level + 1) + std::format("\"{}\": {}", key, print_internal(value, level + 1));
-            if (i < obj.size() - 1) result += ",";
+            if (i < obj.size() - 1)
+              result += ",";
             result += "\n";
             i++;
           }
