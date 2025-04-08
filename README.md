@@ -15,7 +15,7 @@ A common cli utility as a wrapper over 'cat' command and some more features I pe
 ### Requirements
 
 Any C++ compiler that supports C++23 standard.  
-I am using g++ (GCC) 15.0.1, so take it as minimum requirement.
+I am using g++ (GCC) 15.0.1 & clang++ (Clang) 20.1.2, so take it as minimum requirement.
 
 ### Building
 
@@ -30,4 +30,11 @@ I am using g++ (GCC) 15.0.1, so take it as minimum requirement.
     $ cd meow                                     # Change directory
     $ g++ ./bld -o ./bld.cpp                      # Bootstrap build system
     $ ./bld                                       # run the build system
+```
+
+**Build options**
+```bash
+    $ bld clean               # delete build directory
+    $ bld run                 # run the executable
+    $ bld compiler=clang++    # use clang++ instead of g++
 ```

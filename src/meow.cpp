@@ -35,7 +35,7 @@ void handle_args(std::vector<std::string> args)
     }
     else if (args[1] == "version" || args[1] == "-v")
     {
-      std::println("Version: 1.0.0");
+      std::println("Version: 0.0.1");
       return;
     }
     else
@@ -46,6 +46,10 @@ void handle_args(std::vector<std::string> args)
   else if (NUM_ARGS == 2)
   {
     meow_core(args);
+  }
+  else
+  {
+    throw "Kekw";
   }
 }
 
