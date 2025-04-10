@@ -3,6 +3,7 @@
 #include <optional>
 #include <string>
 #include <variant>
+#include <expected>
 
 #include "./json.hpp"
 
@@ -15,4 +16,8 @@ namespace utls
   void handle_error(const Error &e, bool _exit = true);
 
   std::string expand_paths(std::string_view arg);
+
+  bool is_path_absolute(std::string_view path);
+
+  std::expected<void, std::string> write_file(const std::string &filename, const std::string &content);
 }  // namespace utls

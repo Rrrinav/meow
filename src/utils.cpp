@@ -35,12 +35,12 @@ namespace utls
           using T = std::decay_t<decltype(err)>;
           if constexpr (std::is_same_v<T, jsn::parse_error>)
           {
-            std::println(stderr, "ERROR:{}:{}:{}: {}\n        {}", err.location.filename, err.location.line, err.location.column,
+            std::println(stderr, "[ERROR]:{}:{}:{}: {}\n        {}", err.location.filename, err.location.line, err.location.column,
                          err.message, err.context);
           }
           else if constexpr (std::is_same_v<T, std::string>)
           {
-            std::println(stderr, "Error: {}", err);
+            std::println(stderr, "[ERROR]: {}", err);
           }
           else
           {
@@ -72,5 +72,35 @@ namespace utls
     }
 
     return result;
+  }
+
+  bool is_path_absolute(std::string_view path)
+  {
+    if (path.front() == '/' ||
+        path.starts_with("~/") ||
+        path.starts_with("$HOME/") ||
+        path.starts_with("${HOME}/"))
+      return true;
+    else return false;
+  }
+
+  std::expected<void, std::string> write_file(const std::string &filename, const std::string &content)
+  {
+    std::string temp_filename = filename + ".tmp";
+
+    std::ofstream file(temp_filename, std::ios::out);
+    if (!file)
+      return std::unexpected("Failed to open temporary file for writing");
+
+    file.write(content.data(), content.size());
+    if (file.bad())
+      return std::unexpected("Failed to write to temporary file");
+
+    file.close();
+
+    if (std::rename(temp_filename.c_str(), filename.c_str()) != 0)
+      return std::unexpected("Failed to rename temporary file to original. New config is in " + temp_filename);
+
+    return {};
   }
 }  // namespace utls

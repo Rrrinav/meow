@@ -131,6 +131,45 @@ namespace jsn
     return std::get<object_type>(data);
   }
 
+  bool &value::ref_boolean()
+  {
+    if (!is_boolean())
+      throw std::runtime_error(std::format("Type error: expected boolean, got {}", type_to_string(type())));
+
+    return std::get<bool>(data);
+  }
+
+  double &value::ref_number()
+  {
+    if (!is_number())
+      throw std::runtime_error(std::format("Type error: expected number, got {}", type_to_string(type())));
+
+    return std::get<double>(data);
+  }
+
+  std::string &value::ref_string()
+  {
+    if (!is_string())
+      throw std::runtime_error(std::format("Type error: expected string, got {}", type_to_string(type())));
+
+    return std::get<std::string>(data);
+  }
+
+  value::array_type &value::ref_array()
+  {
+    if (!is_array())
+      throw std::runtime_error(std::format("Type error: expected array, got {}", type_to_string(type())));
+
+    return std::get<array_type>(data);
+  }
+
+  value::object_type &value::ref_object()
+  {
+    if (!is_object())
+      throw std::runtime_error(std::format("Type error: expected object, got {}", type_to_string(type())));
+
+    return std::get<object_type>(data);
+  }
   // Array element access
   const value value::operator[](const std::size_t index) const
   {
@@ -144,6 +183,35 @@ namespace jsn
 
   const value value::operator[](int index) const { return (*this)[static_cast<std::size_t>(index)]; }
 
+  value &value::operator[](std::size_t index)
+  {
+    if (!is_array())
+      throw std::runtime_error(std::format("Type error: expected array, got {}", type_to_string(type())));
+
+    auto &arr = std::get<array_type>(data);
+    if (index >= arr.size())
+      throw std::out_of_range("Index out of range");
+
+    return arr[index];
+  }
+
+  value &value::operator[](int index) { return (*this)[static_cast<std::size_t>(index)]; }
+
+  value &value::operator[](const char *key)
+  {
+    if (!is_object())
+      throw std::runtime_error(std::format("Type error: expected object, got {}", type_to_string(type())));
+
+    auto &obj = std::get<object_type>(data);
+    auto it = obj.find(key);
+    if (it == obj.end())
+    {
+      obj[key] = value();
+    }
+    return it->second;
+  }
+
+  value &value::operator[](const std::string &key) { return (*this)[key.c_str()]; }
   // For string literals and const char*
   const value value::operator[](const char *key) const
   {
@@ -254,7 +322,7 @@ namespace jsn
     return std::get<object_type>(data);
   }
 
-  value::object_type &value::as_object()
+  value::object_type &value::mut_object()
   {
     if (!is_object())
       throw std::runtime_error("Value is not an object");
@@ -265,7 +333,7 @@ namespace jsn
   {
     try
     {
-      auto &obj = as_object();
+      auto &obj = mut_object();
       auto it = obj.find(key);
       if (it != obj.end())
         it->second = val;

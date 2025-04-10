@@ -4,10 +4,12 @@
 #include <optional>
 #include <print>
 #include <stdexcept>
+#include <filesystem>
 
 #include "./meow.hpp"
 #include "./utils.hpp"
 #include "./procs.hpp"
+#include "json.hpp"
 
 void handle_args(std::vector<std::string> args)
 {
@@ -16,7 +18,7 @@ void handle_args(std::vector<std::string> args)
   if (NUM_ARGS == 0)
   {
     throw std::runtime_error("TODO: Implement default CLI.");
-    return;
+    return void{};
   }
   else if (NUM_ARGS == 1)
   {
@@ -42,7 +44,7 @@ void handle_args(std::vector<std::string> args)
     else if (args[1] == "version" || args[1] == "-v")
     {
       std::println("Version: 0.0.1");
-      return;
+      return void{};
     }
     else
     {
@@ -56,7 +58,7 @@ void handle_args(std::vector<std::string> args)
   }
   else
   {
-    throw "Kekw";
+    throw std::runtime_error("TODO: Implement 1 option 2 args functionality");
   }
 }
 
@@ -96,29 +98,41 @@ void meow_core(std::vector<std::string> args)
         std::expected<std::string, std::string> path = f["path"].expect_string();
         if (!path)
         {
-          std::println(stderr, "[ERROR]: {}", path.error());
-          exit(EXIT_FAILURE);
+          utls::handle_error(path.error());
         }
         if (path.value().size() > 0)
         {
           if (auto result = prc::show_file(*path); !result)
           {
-            std::println(stderr, "[ERROR]: {}", result.error());
-            exit(EXIT_FAILURE);
+            utls::handle_error(result.error());
           }
+          return void{};
         }
-        else
-        {
-          return void{}; // I like it cleaner like this
-        }
+        return void{};
       }
     }
-    std::println(stderr, "File {} not found in config", FILE);
-    exit(EXIT_FAILURE);
+    utls::handle_error(std::format("File {} not found in config", FILE));
   }
   else if (args[1] == "add")
   {
-    std::println("TODO: Implement add");
+    const std::string FILE = args[2];
+    std::filesystem::path path = std::filesystem::absolute(FILE);
+
+    if (!std::filesystem::exists(path)) utls::handle_error(std::format("File {} does not exist", FILE));
+
+    std::string name = path.filename().string();
+    auto files = config["files"].ref_array();
+
+    if (std::find_if(files.begin(), files.end(), [&](const jsn::value &f) { return f["name"].as_string() == name; }) != files.end())
+      utls::handle_error(std::format("File name {} already exists", name));
+
+    files.push_back(jsn::value::object_type{
+        {"name", name},
+        {"path", path.string()},
+    });
+
+    if (auto result = utls::write_file("./assets/config.json", jsn::pretty_print(config, 2)); !result)
+      utls::handle_error(std::format("[ERROR]: Filed to write config file: \n     {}", result.error()));
   }
   else if (args[1] == "remove")
   {

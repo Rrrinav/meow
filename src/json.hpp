@@ -99,16 +99,26 @@ namespace jsn
     operator object_type() const;
 
     [[nodiscard]] bool as_boolean() const;
-    [[nodiscard]] int as_int() const;
     [[nodiscard]] double as_number() const;
     [[nodiscard]] const std::string &as_string() const;
     [[nodiscard]] const array_type &as_array() const;
     [[nodiscard]] const object_type &as_object() const;
 
+    [[nodiscard]] bool &ref_boolean();
+    [[nodiscard]] double &ref_number();
+    [[nodiscard]] std::string &ref_string();
+    [[nodiscard]] array_type &ref_array();
+    [[nodiscard]] object_type &ref_object();
+
     [[nodiscard]] const value operator[](const std::size_t index) const;
     [[nodiscard]] const value operator[](int index) const;
     [[nodiscard]] const value operator[](const char *key) const;
     [[nodiscard]] const value operator[](const std::string &key) const;
+
+    value &operator[](std::size_t index);
+    value &operator[](int index);
+    value& operator[](const char *key);
+    value& operator[](const std::string &key);
 
     [[nodiscard]] std::expected<bool, std::string> expect_boolean() const noexcept;
     [[nodiscard]] std::expected<double, std::string> expect_number() const noexcept;
@@ -122,7 +132,7 @@ namespace jsn
     [[nodiscard]] std::optional<array_type> array_opt() const noexcept;
     [[nodiscard]] std::optional<object_type> object_opt() const noexcept;
 
-    object_type& as_object();
+    object_type& mut_object();
     void set(const std::string &key, const value &val);
     void set_nested(const std::string &path, const value &val);
     std::expected<size_t, std::string> push(std::string path, const value &val);
