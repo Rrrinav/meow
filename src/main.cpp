@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
   }
   catch (const std::exception &e)
   {
-    std::println(stderr, "{}", e.what());
+    std::println(stderr, "[ERROR]: {}", e.what());
     std::println(stderr, "Send patches please 󰇸 !");
     return 1;
   }

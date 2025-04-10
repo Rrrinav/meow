@@ -25,7 +25,7 @@ namespace jsn
   class value
   {
   public:
-    using array_type = std::vector<value>;
+    using array_type  = std::vector<value>;
     using object_type = std::map<std::string, value>;
 
   private:
@@ -100,16 +100,6 @@ namespace jsn
 
     [[nodiscard]] bool as_boolean() const;
     [[nodiscard]] int as_int() const;
-    [[nodiscard]] const value& get(const std::string &key) const
-    {
-      if (is_object())
-      {
-        auto it = std::get<object_type>(data).find(key);
-        if (it != std::get<object_type>(data).end())
-          return it->second;
-      }
-      throw std::runtime_error("Key not found or not an object");
-    }
     [[nodiscard]] double as_number() const;
     [[nodiscard]] const std::string &as_string() const;
     [[nodiscard]] const array_type &as_array() const;
