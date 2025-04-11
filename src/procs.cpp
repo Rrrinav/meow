@@ -3,8 +3,15 @@
 #include "./procs.hpp"
 #include "./utils.hpp"
 
-namespace prc
+namespace meow
 {
+  int get_terminal_width()
+  {
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    return w.ws_col;
+  }
+
   std::expected<int, std::string> wait_for_process(pid_t pid, std::string name)
   {
     int status = 0;
@@ -48,7 +55,7 @@ namespace prc
       std::vector<std::string> expanded_args;
 
       for (auto &arg : args)
-        expanded_args.push_back(utls::expand_paths(arg));
+        expanded_args.push_back(meow::expand_paths(arg));
 
       std::vector<char *> argv;
 

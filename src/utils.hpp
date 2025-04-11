@@ -7,7 +7,7 @@
 
 #include "./json.hpp"
 
-namespace utls
+namespace meow
 {
   std::optional<std::string> read_file(const std::string &filename);
 

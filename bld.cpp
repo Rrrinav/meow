@@ -89,8 +89,6 @@ int main(int argc, char **argv)
 {
   BLD_REBUILD_YOURSELF_ONCHANGE();
 
-  bld::log(bld::Log_type::INFO, "Using compiler: " + COMPILER_NAME + " (" + COMPILER_VERSION + ")");
-
   // Optional compiler warnings
 #if defined(__GNUC__) && !defined(__clang__)
   if (__GNUC__ < 13)

@@ -1,6 +1,6 @@
 # Meow
 
-This is what cat is actually supposed to do.
+🐾 This is what cat is actually supposed to do.
 
 A common cli utility as a wrapper over 'cat' command and some more features I personally need.
 
@@ -36,5 +36,6 @@ I am using g++ (GCC) 15.0.1 & clang++ (Clang) 20.1.2, so take it as minimum requ
 ```bash
     $ bld clean               # delete build directory
     $ bld run                 # run the executable
-    $ bld compiler=clang++    # use clang++ instead of g++
 ```
+
+bld will detect the compiler used to build it and use it to build the project too.
