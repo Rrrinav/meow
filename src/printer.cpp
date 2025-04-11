@@ -184,11 +184,9 @@ namespace meow
     std::print("\033[{};1H\033[2K", row);
 
     // For efficiency, build the line in chunks
-    constexpr int CHUNK_SIZE = 64;
     std::string chunk;
-    chunk.reserve(CHUNK_SIZE);
-
-    for (int i = 0; i < CHUNK_SIZE; ++i)
+    chunk.reserve(width);
+    for (int i = 0; i < width; ++i)
     {
       if (pos != -1 && i == pos)
       {
@@ -197,16 +195,8 @@ namespace meow
       }
       chunk += ch;
     }
-    // Print the color prefix
     std::print("{}", color);
-
-    // Print chunks for efficiency
-    for (int i = 0; i < width / CHUNK_SIZE; ++i) std::print("{}", chunk);
-
-    // Print remaining characters
-    for (int i = 0; i < width % CHUNK_SIZE; ++i) std::print("{}", ch);
-
-    // Reset color
+    std::print("{}", chunk);
     std::print("\033[0m");
   }
 
