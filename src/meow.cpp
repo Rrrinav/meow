@@ -113,6 +113,8 @@ void meow_core(std::vector<std::string> args)
         {
           // TODO: Add config options for backends and make this work
           // print_file(meow::read_file(meow::expand_paths(path.value())).value_or(""), path.value());
+          meow::show_contents(meow::read_file(meow::expand_paths(path.value())).value_or(""), path.value());
+          return void{};
           if (auto result = meow::show_file(*path); !result)
           {
             meow::handle_error(result.error());

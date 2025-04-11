@@ -5,13 +5,6 @@
 
 namespace meow
 {
-  int get_terminal_width()
-  {
-    struct winsize w;
-    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-    return w.ws_col;
-  }
-
   std::expected<int, std::string> wait_for_process(pid_t pid, std::string name)
   {
     int status = 0;

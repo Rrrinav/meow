@@ -11,8 +11,6 @@
 
 namespace meow
 {
-  int get_terminal_width();
-
   std::expected<int, std::string> wait_for_process(pid_t pid, std::string name = "");
 
   pid_t create_process(const std::vector<std::string> &args);
