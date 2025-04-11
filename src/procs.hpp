@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string_view>
 #include <vector>
 #include <expected>
 #include <string>
@@ -15,5 +16,5 @@ namespace meow
 
   pid_t create_process(const std::vector<std::string> &args);
 
-  std::expected<void, std::string> show_file(const std::string &file);
+  std::expected<void, std::string> show_file(const std::string &file, std::string_view bakcdend);
 }  // namespace prc

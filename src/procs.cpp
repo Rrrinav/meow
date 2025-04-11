@@ -65,9 +65,10 @@ namespace meow
     return pid;
   }
 
-  std::expected<void, std::string> show_file(const std::string &file)
+  std::expected<void, std::string> show_file(const std::string &file, std::string_view backend)
   {
-    std::vector<std::string> args = {"bat", file};
+    std::vector<std::string> args = {std::string(backend.data()), file};
+
     pid_t pid = create_process(args);
     if (pid == -1)
       return std::unexpected("Failed to fork process");

@@ -39,6 +39,7 @@ namespace meow
 
   std::vector<std::string> split_lines(std::string_view str);
 
+  // TODO: Wrap by word
   std::vector<std::string> wrap_line(std::string_view line, int width);
 
   void draw_horizontal_line(int row, int pos = -1, int sym = 0, const std::string &ch = "─", const std::string &color = "");

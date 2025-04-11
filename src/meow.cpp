@@ -111,15 +111,20 @@ void meow_core(std::vector<std::string> args)
         }
         if (path.value().size() > 0)
         {
-          // TODO: Add config options for backends and make this work
-          // print_file(meow::read_file(meow::expand_paths(path.value())).value_or(""), path.value());
-          meow::show_contents(meow::read_file(meow::expand_paths(path.value())).value_or(""), path.value());
-          return void{};
-          if (auto result = meow::show_file(*path); !result)
+          std::string backend = config["backend"].string_opt().value_or("meow");
+          if (backend == "cat" || backend == "bat")
           {
-            meow::handle_error(result.error());
+            if (auto result = meow::show_file(*path, backend); !result)
+            {
+              meow::handle_error(result.error());
+            }
+            return void{};
           }
-          return void{};
+          else
+          {
+            meow::show_contents(meow::read_file(meow::expand_paths(path.value())).value_or(""), path.value());
+            return void{};
+          }
         }
         return void{};
       }

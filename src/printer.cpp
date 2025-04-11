@@ -177,7 +177,7 @@ namespace meow
 
   void draw_horizontal_line(int row, int pos, int sym, const std::string &ch, const std::string &color)
   {
-    std::string table[] = {"┬", "┼"};
+    std::string table[] = {"┬", "┼", "┴"};
     auto [width, _] = terminal_dimensions();
 
     // Position cursor and clear line
@@ -318,7 +318,11 @@ namespace meow
 
     // Print bottom border
     std::string bottom_border;
-    for (int i = 0; i < term_width; i++) bottom_border += "─";
+    for (int i = 0; i < term_width; i++)
+      if (i == margin_size && margin_size > 0)
+        bottom_border += "┴";
+      else
+        bottom_border += "─";
     std::print("{}\n", bottom_border);
   }
 
@@ -410,26 +414,21 @@ namespace meow
         }
 
         // Draw footer
-        if (need_full_redraw)
-        {
-          draw_horizontal_line(term_height - 1);
+        draw_horizontal_line(term_height - 1, margin_size, 2);
 
-          // Draw status bar with position info
-          std::print("\033[{};1H\033[2K", term_height);
+        // Draw status bar with position info
+        std::print("\033[{};1H\033[2K", term_height);
 
-          // Show scroll percentage
-          int percentage =
-              visible_lines.empty() ? 100 : std::min(100, static_cast<int>((offset + view_lines) * 100 / visible_lines.size()));
+        // Show scroll percentage
+        int percentage = visible_lines.empty() ? 100 : std::min(100, static_cast<int>((offset + view_lines) * 100 / visible_lines.size()));
 
-          std::print("\033[1;38;5;248m");
-          std::string footer = std::format(" PgUp/PgDn | Line: {}/{} ({:3}%) | q:quit", offset + 1,
-                                           visible_lines.empty() ? 1 : visible_lines.size(), percentage);
-          int visible_chars = 0;
-          if (footer.size() + 3 > static_cast<size_t>(term_width))  // +3 for up/down arrows
-            footer = footer.substr(0, term_width - 7) + "...\033[0m";
-          std::print("\033[{};1H\033[2K ↑↓{}", term_height, footer);
-          std::print("\033[0m");
-        }
+        std::print("\033[1;38;5;248m");
+        std::string footer = std::format(" PgUp/PgDn | Line: {}/{} ({:3}%) | q:quit", offset + 1, visible_lines.empty() ? 1 : visible_lines.size(), percentage);
+        int visible_chars = 0;
+        if (footer.size() + 3 > static_cast<size_t>(term_width))  // +3 for up/down arrows
+          footer = footer.substr(0, term_width - 7) + "...\033[0m";
+        std::print("\033[{};1H\033[2K ↑↓{}", term_height, footer);
+        std::print("\033[0m");
 
         need_full_redraw = false;
         prev_offset = offset;
