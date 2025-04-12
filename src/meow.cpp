@@ -158,7 +158,17 @@ void meow_core(std::vector<std::string> args)
   }
   else if (args[1] == "remove")
   {
-    std::println("TODO: Implement remove");
+    const std::string FILE = args[2];
+    auto &files = config["files"].ref_array();
+    std::erase_if(files, [&](const jsn::value &val) {
+        return val["name"].as_string() == FILE;
+      });
+    if (auto result = meow::write_file("./assets/config.json", jsn::pretty_print(config, 2)); !result)
+      meow::handle_error(std::format("[ERROR]: Filed to write config file: \n     {}", result.error()));
+    else
+      std::println("File {} removed from meow", FILE);
+
+    return void{};
   }
   else if (args[1] == "remove-alias")
   {

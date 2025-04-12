@@ -368,7 +368,7 @@ namespace meow
         if (need_full_redraw)
           clear_screen();
 
-        int margin_size = show_line_numbers ? lnw : left_padding;
+        int margin_size = show_line_numbers ? lnw + 1 : left_padding;
 
         // Draw header
         if (need_full_redraw)
@@ -466,7 +466,6 @@ namespace meow
       }
     }
 
-    // Cleanup
     clear_screen();
     disable_raw_mode();
   }
