@@ -1,6 +1,5 @@
 #include "./utils.hpp"
 
-
 #include <cstdio>
 #include <filesystem>
 #include <cstdlib>
@@ -23,7 +22,10 @@ namespace meow
 
     std::string content(size, '\0');
     if (!file.read(content.data(), size))
+    {
+      std::println("Error reading file: {}", filename);
       return std::nullopt;
+    }
 
     return content;
   }
@@ -77,12 +79,10 @@ namespace meow
 
   bool is_path_absolute(std::string_view path)
   {
-    if (path.front() == '/' ||
-        path.starts_with("~/") ||
-        path.starts_with("$HOME/") ||
-        path.starts_with("${HOME}/"))
+    if (path.front() == '/' || path.starts_with("~/") || path.starts_with("$HOME/") || path.starts_with("${HOME}/"))
       return true;
-    else return false;
+    else
+      return false;
   }
 
   std::expected<void, std::string> write_file(const std::string &filename, const std::string &content)
@@ -107,14 +107,23 @@ namespace meow
 
   bool get_json(std::string_view path, jsn::value &config)
   {
-    std::optional<std::string> json_config = meow::read_file(path.data());
-    if (!json_config)
+    std::filesystem::path _path = std::filesystem::absolute(path);
+
+    if (!std::filesystem::exists(_path))
     {
-      std::println(stderr, "[Error]: Failed to read config file.");
-      std::println(stderr, "Please create a config file at {}", path);
+      std::ofstream file(path.data());
+      file << "{\n}";
+      file.close();
+    }
+
+    std::optional<std::string> json_str = meow::read_file(path.data());
+    if (!json_str)
+    {
+      std::println(stderr, "[ERROR]: Failed to read file: {}", path);
       return false;
     }
-    std::expected<jsn::value, jsn::parse_error> config_ex = jsn::try_parse(json_config.value());
+
+    std::expected<jsn::value, jsn::parse_error> config_ex = jsn::try_parse(json_str.value());
     if (!config_ex)
     {
       meow::handle_error(config_ex.error());

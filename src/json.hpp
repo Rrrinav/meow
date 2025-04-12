@@ -137,6 +137,52 @@ namespace jsn
     void set_nested(const std::string &path, const value &val);
     std::expected<size_t, std::string> push(std::string path, const value &val);
     std::expected<size_t, std::string> put_at(std::string path, const value &val);
+
+    bool exists(const std::string &key)
+    {
+      if (!is_object())
+        return false;
+
+      auto &obj = std::get<object_type>(data);
+
+      if (obj.find(key) != obj.end())
+        return true;
+      else
+        return false;
+    }
+
+    template <typename T>
+    void add(std::string key, Value_type type, T val = T{})
+    {
+      if (!is_object())
+        return;
+
+      auto &obj = std::get<object_type>(data);
+
+      if (obj.find(key) == obj.end())
+      {
+        switch (type) {
+          case Value_type::null:
+            obj[key] = value(val);
+            break;
+          case Value_type::boolean:
+            obj[key] = value(val);
+            break;
+          case Value_type::number:
+            obj[key] = value(val);
+            break;
+          case Value_type::string:
+            obj[key] = value("");
+            break;
+          case Value_type::array:
+            obj[key] = value(array_type());
+            break;
+          case Value_type::object:
+            obj[key] = value(object_type());
+            break;
+        }
+      }
+    }
   };
 
   using array_type = std::vector<value>;

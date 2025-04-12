@@ -80,13 +80,25 @@ void meow_core(std::vector<std::string> args)
   jsn::value config{};
   jsn::value data{};
 
-  if (!meow::get_json(CONFIG_PATH ,config)) return;
-  if (!meow::get_json(DATA_PATH ,data)) return;
+  if (!meow::get_json(CONFIG_PATH ,config) || !meow::get_json(DATA_PATH ,data))
+    return void{};
 
   if (args[1] == "show")
   {
     const std::string FILE = args[2];
-    std::vector<jsn::value> files = data["files"].as_array();
+    if (!data.exists("files"))
+      data.add("files", jsn::Value_type::array, jsn::array_type({}));
+
+    jsn::Value_type files_type = data["files"].type(); // Idk which way is better
+    if (files_type != jsn::Value_type::array)
+    {
+      if (files_type != jsn::Value_type::null)
+        meow::handle_error("config file is corrupted 'files' is supposed to be an array"); 
+      else
+        data["files"] = jsn::value::object_type{};
+    }
+
+    std::vector<jsn::value> files = data["files"];
 
     for (jsn::value & f : files)
     {
@@ -99,6 +111,10 @@ void meow_core(std::vector<std::string> args)
         }
         if (path.value().size() > 0)
         {
+          if (!config.exists("backend"))
+          {
+            config.add("backend", jsn::Value_type::string, "meow");
+          }
           std::string backend = config["backend"].string_opt().value_or("meow");
           if (backend == "cat" || backend == "bat")
           {
@@ -117,7 +133,7 @@ void meow_core(std::vector<std::string> args)
         return void{};
       }
     }
-    meow::handle_error(std::format("File {} not found in config", FILE));
+    meow::handle_error(std::format("File {} not found in data\n         Run ' {} help ' to see how to add files", FILE, args[0]));
   }
   else if (args[1] == "add")
   {
@@ -128,13 +144,16 @@ void meow_core(std::vector<std::string> args)
 
     std::string name = path.filename().string();
     // If files don't exist, create an empty array
-    jsn::Value_type files_type = data["files"].type();
+    if (!data.exists("files"))
+      data.add("files", jsn::Value_type::array, jsn::array_type({}));
+
+    jsn::Value_type files_type = data["files"].type(); // Idk which way is better
     if (files_type != jsn::Value_type::array)
     {
       if (files_type != jsn::Value_type::null)
         meow::handle_error("config file is corrupted 'files' is supposed to be an array"); 
       else
-        data["files"] = jsn::value::object_type{};
+        data["files"] = jsn::value::array_type{};
     }
     std::vector<jsn::value> &files = data["files"].ref_array();
 
