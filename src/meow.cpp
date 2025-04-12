@@ -10,7 +10,7 @@
 #include "./utils.hpp"
 #include "./procs.hpp"
 #include "./printer.hpp"
-#include "json.hpp"
+#include "./json.hpp"
 
 void handle_args(std::vector<std::string> args)
 {
@@ -71,34 +71,22 @@ void handle_args(std::vector<std::string> args)
   }
 }
 
-bool get_config(jsn::value &config)
-{
-  std::optional<std::string> json_config = meow::read_file("./assets/config.json");
-  if (!json_config)
-  {
-    std::println(stderr, "[Error]: Failed to read config file.");
-    std::println(stderr, "Please create a config file at ./assets/config.json");
-    return false;
-  }
-  std::expected<jsn::value, jsn::parse_error> config_ex = jsn::try_parse(json_config.value());
-  if (!config_ex)
-  {
-    meow::handle_error(config_ex.error());
-    return false;
-  }
-  config = config_ex.value();
-  return true;
-}
 
 void meow_core(std::vector<std::string> args)
 {
+  constexpr char CONFIG_PATH[] = "./assets/config.json";
+  constexpr char DATA_PATH[] = "./assets/data.json";
+
   jsn::value config{};
-  if (!get_config(config)) return;
+  jsn::value data{};
+
+  if (!meow::get_json(CONFIG_PATH ,config)) return;
+  if (!meow::get_json(DATA_PATH ,data)) return;
 
   if (args[1] == "show")
   {
     const std::string FILE = args[2];
-    std::vector<jsn::value> files = config["files"].as_array();
+    std::vector<jsn::value> files = data["files"].as_array();
 
     for (jsn::value & f : files)
     {
@@ -139,7 +127,16 @@ void meow_core(std::vector<std::string> args)
     if (!std::filesystem::exists(path)) meow::handle_error(std::format("File {} does not exist", FILE));
 
     std::string name = path.filename().string();
-    std::vector<jsn::value> &files = config["files"].ref_array();
+    // If files don't exist, create an empty array
+    jsn::Value_type files_type = data["files"].type();
+    if (files_type != jsn::Value_type::array)
+    {
+      if (files_type != jsn::Value_type::null)
+        meow::handle_error("config file is corrupted 'files' is supposed to be an array"); 
+      else
+        data["files"] = jsn::value::object_type{};
+    }
+    std::vector<jsn::value> &files = data["files"].ref_array();
 
     if (std::find_if(files.begin(), files.end(), [&](const jsn::value &f) { return f["name"].as_string() == name; }) != files.end())
       meow::handle_error(std::format("File name {} already exists", name));
@@ -149,7 +146,7 @@ void meow_core(std::vector<std::string> args)
         {"path", path.string()},
     });
 
-    if (auto result = meow::write_file("./assets/config.json", jsn::pretty_print(config, 2)); !result)
+    if (auto result = meow::write_file(CONFIG_PATH, jsn::pretty_print(config, 2)); !result)
       meow::handle_error(std::format("[ERROR]: Filed to write config file: \n     {}", result.error()));
     else
       std::println("File {} added to meow", name);
@@ -159,11 +156,22 @@ void meow_core(std::vector<std::string> args)
   else if (args[1] == "remove")
   {
     const std::string FILE = args[2];
-    auto &files = config["files"].ref_array();
-    std::erase_if(files, [&](const jsn::value &val) {
-        return val["name"].as_string() == FILE;
-      });
-    if (auto result = meow::write_file("./assets/config.json", jsn::pretty_print(config, 2)); !result)
+    jsn::Value_type files_type = data["files"].type();
+    if (files_type != jsn::Value_type::array)
+    {
+      if (files_type != jsn::Value_type::null)
+        meow::handle_error("config file is corrupted 'files' is supposed to be an array");
+      else
+      {
+        std::println("No files found in meow");
+        return void{};
+      }
+    }
+
+    auto &files = data["files"].ref_array();
+    std::erase_if(files, [&](const jsn::value &val) { return val["name"].as_string() == FILE; });
+
+    if (auto result = meow::write_file(CONFIG_PATH, jsn::pretty_print(config, 2)); !result)
       meow::handle_error(std::format("[ERROR]: Filed to write config file: \n     {}", result.error()));
     else
       std::println("File {} removed from meow", FILE);
@@ -173,5 +181,6 @@ void meow_core(std::vector<std::string> args)
   else if (args[1] == "remove-alias")
   {
     std::println("TODO: Implement remove-alias");
+    return void{};
   }
 }

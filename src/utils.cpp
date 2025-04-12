@@ -104,4 +104,23 @@ namespace meow
 
     return {};
   }
-}  // namespace utls
+
+  bool get_json(std::string_view path, jsn::value &config)
+  {
+    std::optional<std::string> json_config = meow::read_file(path.data());
+    if (!json_config)
+    {
+      std::println(stderr, "[Error]: Failed to read config file.");
+      std::println(stderr, "Please create a config file at {}", path);
+      return false;
+    }
+    std::expected<jsn::value, jsn::parse_error> config_ex = jsn::try_parse(json_config.value());
+    if (!config_ex)
+    {
+      meow::handle_error(config_ex.error());
+      return false;
+    }
+    config = config_ex.value();
+    return true;
+  }
+}  // namespace meow

@@ -20,4 +20,6 @@ namespace meow
   bool is_path_absolute(std::string_view path);
 
   std::expected<void, std::string> write_file(const std::string &filename, const std::string &content);
+
+  bool get_json(std::string_view path, jsn::value &config);
 }  // namespace utls

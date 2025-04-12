@@ -2,7 +2,6 @@
 #include <print>
 
 #include "./meow.hpp"
-#include "./json.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -14,7 +13,7 @@ int main(int argc, char *argv[])
   catch (const std::exception &e)
   {
     std::println(stderr, "[ERROR]: {}", e.what());
-    std::println(stderr, "Send patches please 󰇸 !");
+    std::println(stderr, "Send patches please 󰇸 ! but maybe it is a genuine issue");
     return 1;
   }
   catch (...)

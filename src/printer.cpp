@@ -18,7 +18,7 @@
 
 termios original_termios{};
 bool resize_flag = false;
-bool running = true;
+bool running     = true;
 
 namespace meow
 {
@@ -265,8 +265,7 @@ namespace meow
     return result;
   }
 
-  void simple_cat(std::vector<std::string> original_lines, std::string_view title, int term_width, int term_height, size_t left_padding,
-                  bool show_line_numbers)
+  void simple_cat(std::vector<std::string> original_lines, std::string_view title, int term_width, int term_height, size_t left_padding, bool show_line_numbers)
   {
     // Calculate line number width
     int lnw = show_line_numbers ? std::to_string(original_lines.size()).length() : 0;
