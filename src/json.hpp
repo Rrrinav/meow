@@ -172,13 +172,13 @@ namespace jsn
             obj[key] = value(val);
             break;
           case Value_type::string:
-            obj[key] = value("");
+            obj[key] = value(val);
             break;
           case Value_type::array:
-            obj[key] = value(array_type());
+            obj[key] = value(val);
             break;
           case Value_type::object:
-            obj[key] = value(object_type());
+            obj[key] = value(val);
             break;
         }
       }

@@ -145,13 +145,13 @@ void meow_core(std::vector<std::string> args)
     std::string name = path.filename().string();
     // If files don't exist, create an empty array
     if (!data.exists("files"))
-      data.add("files", jsn::Value_type::array, jsn::array_type({}));
+      data.add("files", jsn::Value_type::array, jsn::array_type());
 
     jsn::Value_type files_type = data["files"].type(); // Idk which way is better
     if (files_type != jsn::Value_type::array)
     {
       if (files_type != jsn::Value_type::null)
-        meow::handle_error("config file is corrupted 'files' is supposed to be an array"); 
+        meow::handle_error("config file is corrupted 'files' is supposed to be an array");
       else
         data["files"] = jsn::value::array_type{};
     }
@@ -165,7 +165,7 @@ void meow_core(std::vector<std::string> args)
         {"path", path.string()},
     });
 
-    if (auto result = meow::write_file(CONFIG_PATH, jsn::pretty_print(config, 2)); !result)
+    if (auto result = meow::write_file(DATA_PATH, jsn::pretty_print(data, 2)); !result)
       meow::handle_error(std::format("[ERROR]: Filed to write config file: \n     {}", result.error()));
     else
       std::println("File {} added to meow", name);
@@ -190,7 +190,7 @@ void meow_core(std::vector<std::string> args)
     auto &files = data["files"].ref_array();
     std::erase_if(files, [&](const jsn::value &val) { return val["name"].as_string() == FILE; });
 
-    if (auto result = meow::write_file(CONFIG_PATH, jsn::pretty_print(config, 2)); !result)
+    if (auto result = meow::write_file(DATA_PATH, jsn::pretty_print(data, 2)); !result)
       meow::handle_error(std::format("[ERROR]: Filed to write config file: \n     {}", result.error()));
     else
       std::println("File {} removed from meow", FILE);
