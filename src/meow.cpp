@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstddef>
 #include <cstdlib>
 #include <expected>
@@ -52,27 +53,26 @@ void handle_args(std::vector<std::string> args)
       if (args[1] == "--help")
       {
         std::println(stderr, "Unknown command: ' {} '", args[1]);
-        std::println(stderr, "Yes I know you want help and yes I won't do it. Use 'help' or '-h' instead");
+        std::println(stderr, "Yes I know you want help and yes I won't do it. Use 'help' or '-h' instead.");
       }
       else
       {
         std::println(stderr, "Unknown command: ' {} '", args[1]);
-        std::println(stderr, "Or maybe you're forgetting args for the command. Try 'help' ");
       }
     }
   }
   else if (NUM_ARGS == 2)
   {
-    meow_core(args);
+    meow_2args(args);
   }
-  else
+  else if (NUM_ARGS == 3)
   {
-    throw std::runtime_error("TODO: Implement 1 option 2 args functionality");
+    meow_3args(args);
   }
 }
 
-
-void meow_core(std::vector<std::string> args)
+// TODO: use std::ranges::find_if or std::find_if wherever possible!
+void meow_2args(std::vector<std::string> args)
 {
   constexpr char CONFIG_PATH[] = "./assets/config.json";
   constexpr char DATA_PATH[] = "./assets/data.json";
@@ -98,41 +98,79 @@ void meow_core(std::vector<std::string> args)
         data["files"] = jsn::value::object_type{};
     }
 
+    jsn::Value_type alias_type = data["aliases"].type();
+    if (alias_type != jsn::Value_type::array)
+    {
+      if (alias_type != jsn::Value_type::null)
+        meow::handle_error("config file is corrupted 'files' is supposed to be an array");
+      else
+        data["aliases"] = jsn::value::array_type{};
+    }
+
+    std::vector<jsn::value> aliases = data["aliases"].ref_array();
+
     std::vector<jsn::value> files = data["files"];
 
-    for (jsn::value & f : files)
+    auto show = [&](std::string f_name)
     {
-      if (FILE == f["name"].as_string())
+      for (const jsn::value &f : files)
       {
-        std::expected<std::string, std::string> path = f["path"].expect_string();
-        if (!path)
+        if (f_name == f["name"].as_string())
         {
-          meow::handle_error(path.error());
-        }
-        if (path.value().size() > 0)
-        {
-          if (!config.exists("backend"))
+          std::expected<std::string, std::string> path = f["path"].expect_string();
+          if (!path)
+            meow::handle_error(path.error());
+
+          if (path.value().size() > 0)
           {
-            config.add("backend", jsn::Value_type::string, "meow");
-          }
-          std::string backend = config["backend"].string_opt().value_or("meow");
-          if (backend == "cat" || backend == "bat")
-          {
-            if (auto result = meow::show_file(*path, backend); !result)
+            if (!config.exists("backend"))
+              config.add("backend", jsn::Value_type::string, "meow");
+
+            std::string backend = config["backend"].string_opt().value_or("meow");
+            if (backend == "cat" || backend == "bat")
             {
-              meow::handle_error(result.error());
+              if (auto result = meow::show_file(*path, backend); !result)
+                meow::handle_error(result.error());
+
+              return void{};
             }
-            return void{};
+            else
+            {
+              meow::show_contents(meow::read_file(meow::expand_paths(path.value())).value_or(""), path.value());
+              return void{};
+            }
           }
-          else
-          {
-            meow::show_contents(meow::read_file(meow::expand_paths(path.value())).value_or(""), path.value());
-            return void{};
-          }
+          return void{};
         }
-        return void{};
+      }
+    };
+    // If the name doesn't contain a dot '.' i.e an extension , then there's high chance that it's an alias
+    if (FILE.find(".") == std::string::npos)
+    {
+      for (const jsn::value & a : aliases)
+      {
+        if (a["alias"].as_string() == FILE)
+        {
+          show(a["file"].as_string());
+          return void{};
+        }
+      }
+
+      show(FILE);
+    }
+    else
+    {
+      show(FILE);
+      for (const jsn::value & a : aliases)
+      {
+        if (a["alias"].as_string() == FILE)
+        {
+          show(a["file"].as_string());
+          return void{};
+        }
       }
     }
+
     meow::handle_error(std::format("File {} not found in data\n         Run ' {} help ' to see how to add files", FILE, args[0]));
   }
   else if (args[1] == "add")
@@ -147,7 +185,7 @@ void meow_core(std::vector<std::string> args)
     if (!data.exists("files"))
       data.add("files", jsn::Value_type::array, jsn::array_type());
 
-    jsn::Value_type files_type = data["files"].type(); // Idk which way is better
+    jsn::Value_type files_type = data["files"].type();
     if (files_type != jsn::Value_type::array)
     {
       if (files_type != jsn::Value_type::null)
@@ -199,7 +237,69 @@ void meow_core(std::vector<std::string> args)
   }
   else if (args[1] == "remove-alias")
   {
-    std::println("TODO: Implement remove-alias");
+    if (!data.exists("alias"))
+      data.add("alias", jsn::Value_type::array, jsn::array_type());
+
+    jsn::Value_type files_type = data["alias"].type();
+    if (files_type != jsn::Value_type::array)
+    {
+      if (files_type != jsn::Value_type::null)
+        meow::handle_error("config file is corrupted 'files' is supposed to be an array");
+      else
+        data["files"] = jsn::value::array_type{};
+    }
+  }
+}
+
+void meow_3args(std::vector<std::string> args)
+{
+  constexpr char CONFIG_PATH[] = "./assets/config.json";
+  constexpr char DATA_PATH[] = "./assets/data.json";
+
+  jsn::value config{};
+  jsn::value data{};
+
+  if (!meow::get_json(CONFIG_PATH ,config) || !meow::get_json(DATA_PATH ,data))
+    return void{};
+
+  const std::string COMMAND = args[1];
+
+  if (COMMAND == "alias")
+  {
+    std::string ALIAS = args[2];
+    std::string FILE = args[3];
+
+    if (!data.exists("aliases"))
+      data.add("aliases", jsn::Value_type::array, jsn::array_type());
+
+    jsn::Value_type alias_type = data["aliases"].type();
+    if (alias_type != jsn::Value_type::array)
+    {
+      if (alias_type != jsn::Value_type::null)
+        meow::handle_error("config file is corrupted 'files' is supposed to be an array");
+      else
+        data["aliases"] = jsn::value::array_type{};
+    }
+
+    std::vector<jsn::value> &aliases = data["aliases"].ref_array();
+
+    if (std::find_if(aliases.begin(), aliases.end(), [&](const jsn::value &f) { return f["alias"].as_string() == ALIAS; }) != aliases.end())
+      meow::handle_error(std::format("Alias name {} already exists", ALIAS));
+
+    aliases.push_back(jsn::object_type({ {
+        { "file", FILE },
+        { "alias", ALIAS }
+    }}));
+
+    if (auto result = meow::write_file(DATA_PATH, jsn::pretty_print(data, 2)); !result)
+      meow::handle_error(std::format("[ERROR]: Filed to write config file: \n     {}", result.error()));
+    else
+      std::println("Alias {} for {} added to meow", ALIAS, FILE);
+
     return void{};
   }
+  else {
+    throw std::runtime_error("Unknown command");
+  }
+
 }
