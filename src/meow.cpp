@@ -56,6 +56,7 @@ void handle_args(std::vector<std::string> args)
     else if (args[1] == "remove")       remove_file(args);
     else if (args[1] == "alias")        add_alias(args);
     else if (args[1] == "remove-alias") remove_alias(args);
+    else if (args[1] == "open")         open_file(args);
   }
 }
 
@@ -236,4 +237,67 @@ void remove_alias(std::vector<std::string> args)
 
   write_data_or_error(DATA_PATH, data);
   std::println("Alias '{}' removed from meow", ALIAS);
+}
+
+void open_file(std::vector<std::string> args)
+{
+  if (args.size() < 3)
+  {
+    std::println(stderr, "Usage: {} open <file>", args[0]);
+    return void{};
+  }
+
+  std::string FILE = args[2];
+  constexpr char DATA_PATH[] = "./assets/data.json";
+  jsn::value config, data;
+  if (!meow::get_json(DATA_PATH, data))
+    return;
+
+  ensure_array(data, "files");
+  ensure_array(data, "aliases");
+
+  auto &files   = data["files"].ref_array();
+  auto &aliases = data["aliases"].ref_array();
+
+  std::optional<std::string> path = std::nullopt;
+
+  auto resolve_file_path = [&](const std::string &name) -> std::optional<std::string>
+  {
+    auto file = std::ranges::find_if(files, [&](const jsn::value &f) { return f["name"].as_string() == name; });
+    if (file != files.end())
+      return (*file)["path"].string_opt();
+    return std::nullopt;
+  };
+
+  // If the file name does not contain a dot, it's probably an alias
+  if (FILE.find('.') == std::string::npos)
+  {
+    auto alias = std::ranges::find_if(aliases, [&](const jsn::value &a) { return a["alias"].as_string() == FILE; });
+
+    if (alias != aliases.end())
+      path = resolve_file_path((*alias)["file"].string_opt().value_or(""));
+    else
+      path = resolve_file_path(FILE);
+  }
+  else
+  {
+    path = resolve_file_path(FILE);
+    if (!path)
+    {
+      auto alias = std::ranges::find_if(aliases, [&](const jsn::value &a) { return a["alias"].as_string() == FILE; });
+      if (alias != aliases.end())
+        path = resolve_file_path((*alias)["file"].string_opt().value_or(""));
+    }
+  }
+
+  if (path)
+  {
+    const char *editor = std::getenv("EDITOR");
+    std::string editor_cmd = editor ? editor : "nano";
+    std::string command = std::format("{} '{}'", editor_cmd, *path);
+    std::system(command.c_str());
+    return void{};
+  }
+  std::println(stderr, "File or alias '{}' not found in config", FILE); 
+  return void{};
 }
