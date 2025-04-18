@@ -6,12 +6,25 @@
 #include <print>
 #include <stdexcept>
 #include <filesystem>
+#include <string>
 
 #include "./meow.hpp"
 #include "./utils.hpp"
 #include "./procs.hpp"
 #include "./printer.hpp"
 #include "./json.hpp"
+#include "./paths.hpp"
+
+// Lazy-evaluated global config/data paths
+const std::string& CONFIG_PATH() {
+  static const std::string path = meow::config_path();
+  return path;
+}
+
+const std::string& DATA_PATH() {
+  static const std::string path = meow::data_path();
+  return path;
+}
 
 void handle_args(std::vector<std::string> args)
 {
@@ -27,7 +40,6 @@ void handle_args(std::vector<std::string> args)
       std::println();
       std::println("Usage: {} [options] <args>..", args[0]);
       std::println();
-      std::println();
       std::println("  Options without args:");
       std::println("     help                         Show this help message");
       std::println("     version                      Show the version information");
@@ -35,8 +47,8 @@ void handle_args(std::vector<std::string> args)
       std::println("  Options with args:");
       std::println("     show <file>/<alias>          cat or bat the file or alias added to meow");
       std::println("     add <path>                   Add a file to meow");
-      std::println("     remove <file>                Add a file to meow");
-      std::println("     alias <alias> <file>         Alias a file name to be able to call it using alias directly");
+      std::println("     remove <file>                Remove a file from meow");
+      std::println("     alias <alias> <file>         Alias a file name to call it using alias");
       std::println("     remove-alias <alias>         Remove an alias");
       std::println();
       return;
@@ -44,7 +56,7 @@ void handle_args(std::vector<std::string> args)
     else if (args[1] == "version" || args[1] == "-v")
     {
       std::println("Version: 0.0.1");
-      return void{};
+      return;
     }
     else if (args[1] == "--help")
     {
@@ -92,10 +104,8 @@ void show_file(std::vector<std::string> args)
     return;
   }
 
-  constexpr char CONFIG_PATH[] = "./assets/config.json";
-  constexpr char DATA_PATH[] = "./assets/data.json";
   jsn::value config, data;
-  if (!meow::get_json(CONFIG_PATH, config) || !meow::get_json(DATA_PATH, data))
+  if (!meow::get_json(CONFIG_PATH(), config) || !meow::get_json(DATA_PATH(), data))
     return;
 
   const std::string FILE = args[2];
@@ -129,8 +139,8 @@ void show_file(std::vector<std::string> args)
 
   if (alias_match != aliases.end())
     return show((*alias_match)["file"].as_string());
-
-  show(FILE);
+  else
+    return show(FILE);
 
   meow::handle_error(std::format("File {} not found in data\n         Run ' {} help ' to see how to add files", FILE, args[0]));
 }
@@ -140,13 +150,12 @@ void add_file(std::vector<std::string> args)
 {
   if (args.size() != 3)
   {
-    std::println(stderr, "Usage: {} show <file>", args[0]);
+    std::println(stderr, "Usage: {} add <file>", args[0]);
     return;
   }
 
-  constexpr char DATA_PATH[] = "./assets/data.json";
   jsn::value config, data;
-  if (!meow::get_json("./assets/config.json", config) || !meow::get_json(DATA_PATH, data))
+  if (!meow::get_json(CONFIG_PATH(), config) || !meow::get_json(DATA_PATH(), data))
     return;
 
   const std::string FILE = args[2];
@@ -161,7 +170,7 @@ void add_file(std::vector<std::string> args)
     meow::handle_error(std::format("File name {} already exists", name));
 
   files.push_back(jsn::object_type{{"name", name}, {"path", path.string()}});
-  write_data_or_error(DATA_PATH, data);
+  write_data_or_error(DATA_PATH().c_str(), data);
   std::println("File {} added to meow", name);
 }
 
@@ -170,19 +179,20 @@ void remove_file(std::vector<std::string> args)
 {
   if (args.size() != 3)
   {
-    std::println(stderr, "Usage: {} show <file>", args[0]);
+    std::println(stderr, "Usage: {} remove <file>", args[0]);
     return;
   }
 
-  constexpr char DATA_PATH[] = "./assets/data.json";
   jsn::value config, data;
-  if (!meow::get_json("./assets/config.json", config) || !meow::get_json(DATA_PATH, data))
+  if (!meow::get_json(CONFIG_PATH(), config) || !meow::get_json(DATA_PATH(), data))
     return;
 
   auto &files = ensure_array(data, "files");
+  auto &aliases = ensure_array(data, "aliases");
   const std::string FILE = args[2];
   std::erase_if(files, [&](const jsn::value &val) { return val["name"].as_string() == FILE; });
-  write_data_or_error(DATA_PATH, data);
+  std::erase_if(aliases, [&](const jsn::value &val) { return val["alias"].as_string() == FILE; });
+  write_data_or_error(DATA_PATH().c_str(), data);
   std::println("File {} removed from meow", FILE);
 }
 
@@ -195,9 +205,8 @@ void add_alias(std::vector<std::string> args)
     return;
   }
 
-  constexpr char DATA_PATH[] = "./assets/data.json";
   jsn::value config, data;
-  if (!meow::get_json("./assets/config.json", config) || !meow::get_json(DATA_PATH, data))
+  if (!meow::get_json(CONFIG_PATH(), config) || !meow::get_json(DATA_PATH(), data))
     return;
 
   std::string ALIAS = args[2], FILE = args[3];
@@ -207,7 +216,7 @@ void add_alias(std::vector<std::string> args)
     meow::handle_error(std::format("Alias name {} already exists", ALIAS));
 
   aliases.push_back(jsn::object_type{{"file", FILE}, {"alias", ALIAS}});
-  write_data_or_error(DATA_PATH, data);
+  write_data_or_error(DATA_PATH().c_str(), data);
   std::println("Alias {} for {} added to meow", ALIAS, FILE);
 }
 
@@ -220,10 +229,8 @@ void remove_alias(std::vector<std::string> args)
     return;
   }
 
-  constexpr char DATA_PATH[] = "./assets/data.json";
-  constexpr char CONFIG_PATH[] = "./assets/config.json";
   jsn::value config, data;
-  if (!meow::get_json(CONFIG_PATH, config) || !meow::get_json(DATA_PATH, data))
+  if (!meow::get_json(CONFIG_PATH(), config) || !meow::get_json(DATA_PATH(), data))
     return;
 
   auto &aliases = ensure_array(data, "aliases");
@@ -235,22 +242,22 @@ void remove_alias(std::vector<std::string> args)
   if (aliases.size() == original_size)
     return std::println(stderr, "[INFO]: Alias '{}' not found.", ALIAS);
 
-  write_data_or_error(DATA_PATH, data);
+  write_data_or_error(DATA_PATH().c_str(), data);
   std::println("Alias '{}' removed from meow", ALIAS);
 }
 
+// open_file
 void open_file(std::vector<std::string> args)
 {
   if (args.size() < 3)
   {
     std::println(stderr, "Usage: {} open <file>", args[0]);
-    return void{};
+    return;
   }
 
   std::string FILE = args[2];
-  constexpr char DATA_PATH[] = "./assets/data.json";
   jsn::value config, data;
-  if (!meow::get_json(DATA_PATH, data))
+  if (!meow::get_json(DATA_PATH(), data))
     return;
 
   ensure_array(data, "files");
@@ -269,7 +276,6 @@ void open_file(std::vector<std::string> args)
     return std::nullopt;
   };
 
-  // If the file name does not contain a dot, it's probably an alias
   if (FILE.find('.') == std::string::npos)
   {
     auto alias = std::ranges::find_if(aliases, [&](const jsn::value &a) { return a["alias"].as_string() == FILE; });
@@ -296,8 +302,8 @@ void open_file(std::vector<std::string> args)
     std::string editor_cmd = editor ? editor : "nano";
     std::string command = std::format("{} '{}'", editor_cmd, *path);
     std::system(command.c_str());
-    return void{};
+    return;
   }
-  std::println(stderr, "File or alias '{}' not found in config", FILE); 
-  return void{};
+
+  std::println(stderr, "File or alias '{}' not found in config", FILE);
 }

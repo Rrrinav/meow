@@ -7,7 +7,6 @@ int main(int argc, char *argv[])
 {
   try
   {
-    // People use frameworks for this shit now?
     handle_args(std::vector<std::string>(argv, argv + argc));
   }
   catch (const std::exception &e)

@@ -111,9 +111,22 @@ namespace meow
 
     if (!std::filesystem::exists(_path))
     {
-      std::ofstream file(path.data());
+      std::error_code ec;
+      std::filesystem::create_directories(_path.parent_path(), ec);
+      if (ec)
+      {
+        std::println(stderr, "[ERROR]: Failed to create directories for {}: {}", _path.string(), ec.message());
+        return false;
+      }
+
+      std::ofstream file(_path);
+      if (!file)
+      {
+        std::println(stderr, "[ERROR]: Failed to create file: {}", _path.string());
+        return false;
+      }
+
       file << "{\n}";
-      file.close();
     }
 
     std::optional<std::string> json_str = meow::read_file(path.data());

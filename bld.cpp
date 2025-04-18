@@ -39,7 +39,7 @@ const std::string SRC_FOLDER = "./src/";
 const std::string OBJ_FOLDER = BUILD_FOLDER + "obj/";
 const std::string SRC_FILE = "main.cpp";
 const std::string CPP_STD = "--std=c++23";
-const std::string EXECUTABLE = "main";
+const std::string EXECUTABLE = "meow";
 
 void handle_run()
 {
@@ -85,6 +85,105 @@ void handle_objs()
   }
 }
 
+void build_static()
+{
+  bld::fs::create_dir_if_not_exists(BUILD_FOLDER);
+  bld::fs::create_dir_if_not_exists(OBJ_FOLDER);
+
+  // Step 1: Collect and compile all .cpp files
+  std::vector<std::string> files = bld::fs::list_files_in_dir(SRC_FOLDER);
+  std::vector<std::string> cpp_files;
+
+  std::copy_if(files.begin(), files.end(), std::back_inserter(cpp_files),
+               [](const std::string &f) { return bld::fs::get_extension(f) == ".cpp"; });
+
+  for (const auto &f : cpp_files)
+  {
+    std::string stem = bld::fs::get_stem(f);
+    std::string object_path = OBJ_FOLDER + stem + ".o";
+
+    if (bld::is_executable_outdated(f, object_path))
+    {
+      bld::log(bld::Log_type::INFO, "Compiling " + f + " to " + object_path);
+      if (bld::execute({COMPILER_NAME, "-c", f, "-o", object_path, CPP_STD, "-ggdb"}) < 0)
+        exit(EXIT_FAILURE);
+    }
+  }
+
+  // Step 2: Create static library from object files
+  std::string lib_name = "libmain.a";
+  std::string lib_path = BUILD_FOLDER + lib_name;
+
+  auto objs = bld::fs::list_files_in_dir(OBJ_FOLDER);
+  std::vector<std::string> obj_paths;
+  for (const auto &obj : objs)
+    obj_paths.push_back(obj);
+
+  std::vector<std::string> ar_cmd = {"ar", "rcs", lib_path};
+  ar_cmd.insert(ar_cmd.end(), obj_paths.begin(), obj_paths.end());
+
+  bld::Command ar_cmd_= {};
+  for (const auto &part : ar_cmd)
+    ar_cmd_.add_parts(part);
+
+  bld::log(bld::Log_type::INFO, "Creating static library: " + lib_path);
+  if (bld::execute(ar_cmd_) < 0)
+  {
+    bld::log(bld::Log_type::ERR, "Failed to archive static library.");
+    exit(EXIT_FAILURE);
+  }
+
+  // Step 3: Link final executable from static library
+  bld::Command cmd = {
+    COMPILER_NAME,
+    "-static", // for static linking
+    lib_path,
+    "-o", BUILD_FOLDER + EXECUTABLE + "_static",
+    "-O3",
+    CPP_STD
+  };
+
+  bld::log(bld::Log_type::INFO, "Linking executable from static library...");
+  if (bld::execute(cmd) < 0)
+  {
+    bld::log(bld::Log_type::ERR, "Static executable linking failed.");
+    exit(1);
+  }
+
+  bld::log(bld::Log_type::INFO, "Static executable built: " + BUILD_FOLDER + EXECUTABLE + "_static");
+}
+
+void handle_install()
+{
+  // Build the path for the static executable
+  std::string static_exe = BUILD_FOLDER + EXECUTABLE + "_static";
+
+  // Check if the static executable exists
+  if (!std::filesystem::exists(static_exe))
+  {
+    bld::log(bld::Log_type::ERR, "Static executable not found. Please build it with 'static' first.");
+    exit(1);
+  }
+
+  // Define the installation directory (default is /usr/local/bin)
+  std::string install_dir = std::getenv("B_LDR_INSTALL_DIR") ? std::getenv("B_LDR_INSTALL_DIR") : "/usr/local/bin";
+  std::filesystem::path target_path = std::filesystem::path(install_dir) / EXECUTABLE;  // Install under the same name
+
+  try
+  {
+    // Copy the static executable to the target installation path
+    std::filesystem::copy_file(static_exe, target_path, std::filesystem::copy_options::overwrite_existing);
+    bld::log(bld::Log_type::INFO, "Installed static executable to: " + target_path.string());
+  }
+  catch (const std::filesystem::filesystem_error &e)
+  {
+    bld::log(bld::Log_type::ERR, "Failed to install: " + std::string(e.what()));
+    exit(1);
+  }
+
+  exit(0);
+}
+
 int main(int argc, char **argv)
 {
   BLD_REBUILD_YOURSELF_ONCHANGE();
@@ -113,13 +212,24 @@ int main(int argc, char **argv)
         handle_clean();
         return 0;
       }
+      else if (args[0] == "static")
+      {
+        build_static();
+        return 0;
+      }
+      else if (args[0] == "install")
+      {
+        handle_install();
+        return 0;
+      }
 
       bld::log(bld::Log_type::ERR, "Only 'run' and 'clean' commands are supported.");
       return 1;
     }
     else if (args.size() > 1)
     {
-      bld::log(bld::Log_type::ERR, "Invalid argument count.\n    Only 'run' and 'clean' commands are supported.");
+      bld::log(bld::Log_type::ERR, "Invalid argument count.\n");
+      bld::log(bld::Log_type::ERR, "Only 'run', 'clean', 'static' & 'install' commands are supported.");
       return 1;
     }
   }
