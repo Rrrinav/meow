@@ -87,8 +87,9 @@ void handle_objs()
 
 void build_static()
 {
+  std::string OBJ_FOLDER_OPT = BUILD_FOLDER + "obj_opt/";
   bld::fs::create_dir_if_not_exists(BUILD_FOLDER);
-  bld::fs::create_dir_if_not_exists(OBJ_FOLDER);
+  bld::fs::create_dir_if_not_exists(OBJ_FOLDER_OPT);
 
   // Step 1: Collect and compile all .cpp files
   std::vector<std::string> files = bld::fs::list_files_in_dir(SRC_FOLDER);
@@ -100,21 +101,19 @@ void build_static()
   for (const auto &f : cpp_files)
   {
     std::string stem = bld::fs::get_stem(f);
-    std::string object_path = OBJ_FOLDER + stem + ".o";
+    std::string object_path = OBJ_FOLDER_OPT + stem + ".o";
 
-    if (bld::is_executable_outdated(f, object_path))
-    {
-      bld::log(bld::Log_type::INFO, "Compiling " + f + " to " + object_path);
-      if (bld::execute({COMPILER_NAME, "-c", f, "-o", object_path, CPP_STD, "-ggdb"}) < 0)
-        exit(EXIT_FAILURE);
-    }
+    // Always recompile with -O3 (optimized)
+    bld::log(bld::Log_type::INFO, "Compiling (optimized) " + f + " to " + object_path);
+    if (bld::execute({COMPILER_NAME, "-c", f, "-o", object_path, CPP_STD, "-O2"}) < 0)
+      exit(EXIT_FAILURE);
   }
 
   // Step 2: Create static library from object files
   std::string lib_name = "libmain.a";
   std::string lib_path = BUILD_FOLDER + lib_name;
 
-  auto objs = bld::fs::list_files_in_dir(OBJ_FOLDER);
+  auto objs = bld::fs::list_files_in_dir(OBJ_FOLDER_OPT);
   std::vector<std::string> obj_paths;
   for (const auto &obj : objs)
     obj_paths.push_back(obj);

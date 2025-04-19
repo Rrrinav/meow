@@ -14,15 +14,16 @@
 #include "./printer.hpp"
 #include "./json.hpp"
 #include "./paths.hpp"
+#include "./prompter.hpp"
 
 // Lazy-evaluated global config/data paths
 const std::string& CONFIG_PATH() {
-  static const std::string path = meow::config_path();
+  static const std::string path = paths::config_path();
   return path;
 }
 
 const std::string& DATA_PATH() {
-  static const std::string path = meow::data_path();
+  static const std::string path = paths::data_path();
   return path;
 }
 
@@ -148,17 +149,30 @@ void show_file(std::vector<std::string> args)
 // add_file
 void add_file(std::vector<std::string> args)
 {
+  std::optional<std::string> arg2 = std::nullopt;
+
   if (args.size() != 3)
   {
-    std::println(stderr, "Usage: {} add <file>", args[0]);
-    return;
+    arg2 = prompt::prompt_path("Enter file path: ");
+    if (!arg2 || arg2.value().empty())
+    {
+      std::println(stderr, "Error: No value read");
+      return;
+    }
   }
 
   jsn::value config, data;
   if (!meow::get_json(CONFIG_PATH(), config) || !meow::get_json(DATA_PATH(), data))
     return;
 
-  const std::string FILE = args[2];
+  std::string _file;
+  if (arg2)
+   _file = arg2.value();
+  else
+    _file = args[2];
+
+  std::string FILE = _file;
+
   std::filesystem::path path = std::filesystem::absolute(FILE);
   if (!std::filesystem::exists(path))
     meow::handle_error(std::format("File {} does not exist", FILE));
