@@ -61,7 +61,7 @@ void handle_args(std::vector<std::string> args)
       std::println();
       std::println("     todo                          Open todo repl");
       std::println("     todo add <todo>               Add a todo");
-      std::println("     todo remove <todo>            Add a todo");
+      std::println("     todo remove <todo no.>        Remove a todo");
       return;
     }
     else if (args[1] == "version" || args[1] == "-v")
