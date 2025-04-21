@@ -15,6 +15,7 @@
 #include "./json.hpp"
 #include "./paths.hpp"
 #include "./prompter.hpp"
+#include "./todo.hpp"
 
 // Lazy-evaluated global config/data paths
 const std::string& CONFIG_PATH() {
@@ -46,12 +47,21 @@ void handle_args(std::vector<std::string> args)
       std::println("     version                      Show the version information");
       std::println();
       std::println("  Options with args:");
+      std::println();
+      std::println("    --------------------File commands--------------------");
+      std::println();
+      std::println("     open <file>                  Open a file in the default editor");
       std::println("     show <file>/<alias>          cat or bat the file or alias added to meow");
       std::println("     add <path>                   Add a file to meow");
       std::println("     remove <file>                Remove a file from meow");
       std::println("     alias <alias> <file>         Alias a file name to call it using alias");
       std::println("     remove-alias <alias>         Remove an alias");
       std::println();
+      std::println("    --------------------TODO commands--------------------");
+      std::println();
+      std::println("     todo                          Open todo repl");
+      std::println("     todo add <todo>               Add a todo");
+      std::println("     todo remove <todo>            Add a todo");
       return;
     }
     else if (args[1] == "version" || args[1] == "-v")
@@ -64,36 +74,14 @@ void handle_args(std::vector<std::string> args)
       std::println(stderr, "Unknown command: ' {} '", args[1]);
       std::println(stderr, "Yes I know you want help and yes I won't do it. Use 'help' or '-h' instead.");
     }
-    else if (args[1] == "show")         show_file(args);
-    else if (args[1] == "add")          add_file(args);
-    else if (args[1] == "remove")       remove_file(args);
-    else if (args[1] == "alias")        add_alias(args);
-    else if (args[1] == "remove-alias") remove_alias(args);
-    else if (args[1] == "open")         open_file(args);
+    else if (args[1] == "show")         return show_file(args);
+    else if (args[1] == "add")          return add_file(args);
+    else if (args[1] == "remove")       return remove_file(args);
+    else if (args[1] == "alias")        return add_alias(args);
+    else if (args[1] == "remove-alias") return remove_alias(args);
+    else if (args[1] == "open")         return open_file(args);
+    else if (args[1] == "todo")         return meow_todo(args);
   }
-}
-
-// Helper functions
-auto ensure_array(jsn::value &data, const std::string &key) -> std::vector<jsn::value> &
-{
-  if (!data.exists(key))
-    data.add(key, jsn::Value_type::array, jsn::array_type());
-
-  auto &val = data[key];
-  if (val.type() == jsn::Value_type::array)
-    return val.ref_array();
-
-  if (val.type() != jsn::Value_type::null)
-    meow::handle_error(std::format("config file is corrupted: '{}' must be an array", key));
-
-  val = jsn::value::array_type{};
-  return val.ref_array();
-}
-
-void write_data_or_error(const char *path, const jsn::value &data)
-{
-  if (auto result = meow::write_file(path, jsn::pretty_print(data, 2)); !result)
-    meow::handle_error(std::format("[ERROR]: Failed to write config file: \n     {}", result.error()));
 }
 
 // show_file
@@ -110,8 +98,11 @@ void show_file(std::vector<std::string> args)
     return;
 
   const std::string FILE = args[2];
-  auto &files = ensure_array(data, "files");
-  auto &aliases = ensure_array(data, "aliases");
+  if (FILE.empty())
+    meow::handle_error("File name is empty");
+
+  auto &files = meow::ensure_array(data, "files");
+  auto &aliases = meow::ensure_array(data, "aliases");
 
   auto show = [&](const std::string &name)
   {
@@ -151,7 +142,7 @@ void add_file(std::vector<std::string> args)
 {
   std::optional<std::string> arg2 = std::nullopt;
 
-  if (args.size() != 3)
+  if (args.size() < 3)
   {
     arg2 = prompt::prompt_path("Enter file path: ");
     if (!arg2 || arg2.value().empty())
@@ -159,6 +150,10 @@ void add_file(std::vector<std::string> args)
       std::println(stderr, "Error: No value read");
       return;
     }
+  }
+  if (args.size() > 3)
+  {
+    meow::handle_error(std::format("Usage: {} add <file>", args[0]));
   }
 
   jsn::value config, data;
@@ -172,19 +167,21 @@ void add_file(std::vector<std::string> args)
     _file = args[2];
 
   std::string FILE = _file;
+  if (FILE.empty())
+    meow::handle_error("File name is empty");
 
   std::filesystem::path path = std::filesystem::absolute(FILE);
   if (!std::filesystem::exists(path))
     meow::handle_error(std::format("File {} does not exist", FILE));
 
   std::string name = path.filename().string();
-  auto &files = ensure_array(data, "files");
+  auto &files = meow::ensure_array(data, "files");
 
   if (std::ranges::any_of(files, [&](const jsn::value &f) { return f["name"].as_string() == name; }))
     meow::handle_error(std::format("File name {} already exists", name));
 
   files.push_back(jsn::object_type{{"name", name}, {"path", path.string()}});
-  write_data_or_error(DATA_PATH().c_str(), data);
+  meow::write_data_or_error(DATA_PATH().c_str(), data);
   std::println("File {} added to meow", name);
 }
 
@@ -201,12 +198,15 @@ void remove_file(std::vector<std::string> args)
   if (!meow::get_json(CONFIG_PATH(), config) || !meow::get_json(DATA_PATH(), data))
     return;
 
-  auto &files = ensure_array(data, "files");
-  auto &aliases = ensure_array(data, "aliases");
+  auto &files = meow::ensure_array(data, "files");
+  auto &aliases = meow::ensure_array(data, "aliases");
   const std::string FILE = args[2];
+  if (FILE.empty())
+    meow::handle_error("File name is empty");
+
   std::erase_if(files, [&](const jsn::value &val) { return val["name"].as_string() == FILE; });
   std::erase_if(aliases, [&](const jsn::value &val) { return val["alias"].as_string() == FILE; });
-  write_data_or_error(DATA_PATH().c_str(), data);
+  meow::write_data_or_error(DATA_PATH().c_str(), data);
   std::println("File {} removed from meow", FILE);
 }
 
@@ -224,13 +224,16 @@ void add_alias(std::vector<std::string> args)
     return;
 
   std::string ALIAS = args[2], FILE = args[3];
-  auto &aliases = ensure_array(data, "aliases");
+  if (ALIAS.empty() || FILE.empty())
+    meow::handle_error("Alias or file name is empty");
+
+  auto &aliases = meow::ensure_array(data, "aliases");
 
   if (std::ranges::any_of(aliases, [&](const jsn::value &f) { return f["alias"].as_string() == ALIAS; }))
     meow::handle_error(std::format("Alias name {} already exists", ALIAS));
 
   aliases.push_back(jsn::object_type{{"file", FILE}, {"alias", ALIAS}});
-  write_data_or_error(DATA_PATH().c_str(), data);
+  meow::write_data_or_error(DATA_PATH().c_str(), data);
   std::println("Alias {} for {} added to meow", ALIAS, FILE);
 }
 
@@ -247,8 +250,11 @@ void remove_alias(std::vector<std::string> args)
   if (!meow::get_json(CONFIG_PATH(), config) || !meow::get_json(DATA_PATH(), data))
     return;
 
-  auto &aliases = ensure_array(data, "aliases");
+  auto &aliases = meow::ensure_array(data, "aliases");
   std::string ALIAS = args[2];
+  if (ALIAS.empty())
+    meow::handle_error("Alias is empty");
+
   auto original_size = aliases.size();
 
   std::erase_if(aliases, [&](const jsn::value &entry) { return entry["alias"].as_string() == ALIAS; });
@@ -256,7 +262,7 @@ void remove_alias(std::vector<std::string> args)
   if (aliases.size() == original_size)
     return std::println(stderr, "[INFO]: Alias '{}' not found.", ALIAS);
 
-  write_data_or_error(DATA_PATH().c_str(), data);
+  meow::write_data_or_error(DATA_PATH().c_str(), data);
   std::println("Alias '{}' removed from meow", ALIAS);
 }
 
@@ -270,12 +276,15 @@ void open_file(std::vector<std::string> args)
   }
 
   std::string FILE = args[2];
+  if (FILE.empty())
+    meow::handle_error("File name is empty");
+
   jsn::value config, data;
   if (!meow::get_json(DATA_PATH(), data))
     return;
 
-  ensure_array(data, "files");
-  ensure_array(data, "aliases");
+  meow::ensure_array(data, "files");
+  meow::ensure_array(data, "aliases");
 
   auto &files   = data["files"].ref_array();
   auto &aliases = data["aliases"].ref_array();
@@ -320,4 +329,28 @@ void open_file(std::vector<std::string> args)
   }
 
   std::println(stderr, "File or alias '{}' not found in config", FILE);
+}
+
+void meow_todo(std::vector<std::string> args)
+{
+  if (args.size() == 2)
+  {
+    return meow::todo::repl();
+  }
+  else if (args.size() > 2)
+  {
+    if (args[2] == "add")    return meow::todo::add(args);
+    if (args[2] == "remove") return meow::todo::remove(args);
+    if (args[2] == "list")   return meow::todo::list(args);
+    else
+    {
+      std::println(stderr, "Usage: {} todo <add|remove|list>", args[0]);
+      return void{};
+    }
+  }
+  else
+  {
+    std::println(stderr, "Usage: {} todo <add|remove|list>", args[0]);
+    return void{};
+  }
 }

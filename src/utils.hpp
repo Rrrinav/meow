@@ -22,4 +22,8 @@ namespace meow
   std::expected<void, std::string> write_file(const std::string &filename, const std::string &content);
 
   bool get_json(std::string_view path, jsn::value &config);
+
+  auto ensure_array(jsn::value &data, const std::string &key) -> std::vector<jsn::value> &;
+
+  void write_data_or_error(const char *path, const jsn::value &data);
 }  // namespace utls

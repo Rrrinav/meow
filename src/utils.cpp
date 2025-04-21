@@ -145,4 +145,26 @@ namespace meow
     config = config_ex.value();
     return true;
   }
+
+  auto ensure_array(jsn::value &data, const std::string &key) -> std::vector<jsn::value> &
+  {
+    if (!data.exists(key))
+      data.add(key, jsn::Value_type::array, jsn::array_type());
+
+    auto &val = data[key];
+    if (val.type() == jsn::Value_type::array)
+      return val.ref_array();
+
+    if (val.type() != jsn::Value_type::null)
+      handle_error(std::format("config file is corrupted: '{}' must be an array", key));
+
+    val = jsn::value::array_type{};
+    return val.ref_array();
+  }
+
+  void write_data_or_error(const char *path, const jsn::value &data)
+  {
+    if (auto result = meow::write_file(path, jsn::pretty_print(data, 2)); !result)
+      handle_error(std::format("[ERROR]: Failed to write config file: \n     {}", result.error()));
+  }
 }  // namespace meow
