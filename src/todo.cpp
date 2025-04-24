@@ -6,16 +6,13 @@
 #include <chrono>
 #include <sstream>
 #include <optional>
+#include <optional>
+#include <vector>
 
 #include "./utils.hpp"
 #include "./todo.hpp"
 #include "./paths.hpp"
-#include "json.hpp"
-
-void meow::todo::repl()
-{
-  throw std::runtime_error("Todo REPL implemented");
-}
+#include "./json.hpp"
 
 std::optional<std::chrono::sys_days> parse_date(const std::string &date_str)
 {
@@ -27,31 +24,17 @@ std::optional<std::chrono::sys_days> parse_date(const std::string &date_str)
   return std::chrono::sys_days{ymd};
 }
 
-std::string time_left(const std::string &due_date_str)
+std::string time_left(std::string_view due_date)
 {
-  std::tm tm = {};
-  std::istringstream ss(due_date_str);
-  ss >> std::get_time(&tm, "%d/%m/%Y");
-  if (ss.fail())
-    return "invalid date";
+  std::chrono::sys_days due = parse_date(due_date.data()).value_or(std::chrono::sys_days{});
+  auto today = std::chrono::floor<std::chrono::days>(std::chrono::system_clock::now());
+  auto diff = due - today;
 
-  auto now = std::chrono::system_clock::now();
-  auto due_time = std::chrono::system_clock::from_time_t(std::mktime(&tm));
-  auto diff = due_time - now;
-
-  if (diff < std::chrono::seconds(0))
+  if (diff.count() < 0)
     return "past due";
 
-  auto hrs = std::chrono::duration_cast<std::chrono::hours>(diff).count();
-  int days = hrs / 24;
-  int hours = hrs % 24;
-
-  std::ostringstream out;
-  if (days > 0)
-    out << days << " day" << (days > 1 ? "s " : " ");
-  if (hours > 0)
-    out << hours << " hr" << (hours > 1 ? "s" : "");
-  return out.str();
+  int days = diff.count();
+  return std::format("{} day{}", days, days == 1 ? "" : "s");
 }
 
 void meow::todo::add(std::vector<std::string> args)
@@ -220,4 +203,60 @@ void meow::todo::list(std::vector<std::string> args)
     std::cout << " \033[2m    ────────────────────────────────────────────────────────────\033[0m\n";
   }
   std::cout << " \033[2m  └─────────────────────────────────────────────────────────────\033[0m\n";
+}
+
+void meow::todo::toggle(std::vector<std::string> args)
+{
+  const int NUM_ARGS = args.size();
+  if (NUM_ARGS != 4)
+  {
+    meow::handle_error(std::format("Usage: {} todo toggle <index | todo string>", args[0]));
+    return;
+  }
+
+  jsn::value data;
+  if (!meow::get_json(paths::data_path(), data))
+    return;
+  meow::ensure_array(data, "todos");
+  auto &todos = data["todos"].ref_array();
+
+  std::string token = args[3];
+  bool changed = false;
+  std::string todo_str = "";
+  std::string status = "done";
+  try
+  {
+    int index = std::stoi(token);
+    if (index < 1 || index > static_cast<int>(todos.size()))
+    {
+      meow::handle_error("Index out of range");
+      return;
+    }
+    todo_str = todos[index - 1]["todo"].as_string();
+    auto& todo = todos[index - 1].ref_object();
+    todo["done"] = !todo["done"].as_boolean();
+    changed = true;
+    status = todo["done"].as_boolean() ? "done" : "not done";
+  }
+  catch (const std::invalid_argument &)
+  {
+    // Not a number: treat as todo string
+    auto it = std::ranges::find_if(todos, [&](const jsn::value &v) { return v["todo"].as_string() == token; });
+    todo_str = token;
+    if (it != todos.end())
+    {
+      auto& todo = it->ref_object();
+      todo["done"] = !todo["done"].as_boolean();
+      changed = true;
+      status = todo["done"].as_boolean() ? "done" : "not done";
+    }
+  }
+  if (!changed)
+  {
+    meow::handle_error("No todo found with that index or description.");
+    return;
+  }
+  meow::write_data_or_error(paths::data_path().c_str(), data);
+  std::println("Todo {} marked as {}!", todo_str, status);
+  return void{};
 }

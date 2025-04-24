@@ -333,15 +333,17 @@ void open_file(std::vector<std::string> args)
 
 void meow_todo(std::vector<std::string> args)
 {
-  if (args.size() == 2)
+  if (args.size() <= 2)
   {
-    return meow::todo::repl();
+    meow::handle_error(std::format("Usage: {} todo <add|remove|list>", args[0]));
+    return;
   }
   else if (args.size() > 2)
   {
-    if (args[2] == "add")    return meow::todo::add(args);
-    if (args[2] == "remove") return meow::todo::remove(args);
-    if (args[2] == "list")   return meow::todo::list(args);
+    if (args[2] == "add")      return meow::todo::add(args);
+    if (args[2] == "remove")   return meow::todo::remove(args);
+    if (args[2] == "list")     return meow::todo::list(args);
+    if (args[2] == "toggle")   return meow::todo::toggle(args);
     else
     {
       std::println(stderr, "Usage: {} todo <add|remove|list>", args[0]);
