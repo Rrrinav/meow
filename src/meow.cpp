@@ -116,14 +116,38 @@ void show_file(std::vector<std::string> args)
       meow::handle_error(path.error());
 
     std::string backend = config["backend"].string_opt().value_or("meow");
-    if (backend == "cat" || backend == "bat")
+
+    if (backend == "bat")
     {
-      if (auto result = meow::show_file(*path, backend); !result)
+      auto bat_opts = config["bat-options"].array_opt().value_or({});
+      std::vector<std::string> options;
+      std::ranges::transform(bat_opts, std::back_inserter(options), [](const jsn::value &v) { return v.as_string(); });
+
+      if (auto result = meow::show_file(*path, backend, options); !result)
+        meow::handle_error(result.error());
+    }
+    else if (backend == "cat")
+    {
+      auto cat_opts = config["cat-options"].array_opt().value_or({});
+      std::vector<std::string> options;
+      std::ranges::transform(cat_opts, std::back_inserter(options), [](const jsn::value &v) { return v.as_string(); });
+
+      if (auto result = meow::show_file(*path, backend, options); !result)
         meow::handle_error(result.error());
     }
     else
     {
-      meow::show_contents(meow::read_file(meow::expand_paths(*path)).value_or(""), *path);
+      auto meow_opts = config["meow-options"].array_opt().value_or({});
+      bool line_numbers = true;
+      int left_pad = 0;
+      for (auto meow_opt : meow_opts)
+      {
+        if (meow_opt.as_object().contains("line-numbers"))
+          line_numbers = meow_opt["line-numbers"].as_boolean();
+        else if (meow_opt.as_object().contains("left-padding"))
+          left_pad = static_cast<int>(meow_opt["left-padding"].as_number());
+      }
+      meow::show_contents(meow::read_file(meow::expand_paths(*path)).value_or(""), *path, left_pad, line_numbers);
     }
   };
 

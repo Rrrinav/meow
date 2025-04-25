@@ -1,4 +1,6 @@
 #include <format>
+#include <print>
+#include <vector>
 
 #include "./procs.hpp"
 #include "./utils.hpp"
@@ -65,9 +67,11 @@ namespace meow
     return pid;
   }
 
-  std::expected<void, std::string> show_file(const std::string &file, std::string_view backend)
+  std::expected<void, std::string> show_file(const std::string &file, std::string_view backend, std::vector<std::string> options)
   {
     std::vector<std::string> args = {std::string(backend.data()), file};
+    for (auto opts: options)
+      args.push_back(opts);
 
     pid_t pid = create_process(args);
     if (pid == -1)

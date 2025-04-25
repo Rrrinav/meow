@@ -16,5 +16,5 @@ namespace meow
 
   pid_t create_process(const std::vector<std::string> &args);
 
-  std::expected<void, std::string> show_file(const std::string &file, std::string_view bakcdend);
+  std::expected<void, std::string> show_file(const std::string &file, std::string_view bakcdend, std::vector<std::string> options = {});
 }  // namespace prc

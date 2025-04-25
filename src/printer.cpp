@@ -265,54 +265,79 @@ namespace meow
     return result;
   }
 
-  void simple_cat(std::vector<std::string> original_lines, std::string_view title, int term_width, int term_height, size_t left_padding, bool show_line_numbers)
+  void simple_cat(std::vector<std::string> original_lines, std::string_view title, int term_width, int term_height, size_t left_padding,
+                  bool show_line_numbers)
   {
-    // Calculate line number width
-    int lnw = show_line_numbers ? std::to_string(original_lines.size()).length() : 0;
-    int margin_size = show_line_numbers ? lnw : left_padding;
+    // Safely calculate line number width
+    int lnw = 0;
+    if (show_line_numbers && !original_lines.empty())
+      lnw = std::max(3, static_cast<int>(std::to_string(original_lines.size()).length()));
 
-    // Format content
-    int dummy_lnw = lnw;
-    auto visible_lines = rebuild_visible_lines(original_lines, term_width, show_line_numbers, left_padding, dummy_lnw);
+    // Calculate content area
+    const int margin_size = show_line_numbers ? lnw : static_cast<int>(left_padding);
+    const int separator_size = show_line_numbers ? 3 : 2;  // " │ " vs "│ "
+    const int content_width = std::max(1, term_width - margin_size - separator_size);
+
+    // Helper function to safely create borders
+    auto make_border = [&](std::string junction)
+    {
+      std::string border;
+      border.reserve(term_width);
+      for (int i = 0; i < term_width; ++i)
+        border += (i == margin_size + 1 && margin_size > 0) ? junction : "─";
+      return border;
+    };
 
     // Print top border
-    std::string top_border;
-    for (int i = 0; i < term_width; i++)
-      if (i == margin_size && margin_size > 0)
-        top_border += "┬";
-      else
-        top_border += "─";
-    std::print("{}\n", top_border);
+    std::print("{}\n", make_border("┬"));
 
-    // Print title
-    std::string new_title = std::string(title);
-    int available_space = term_width - margin_size - 7;
-    if (new_title.size() > static_cast<size_t>(available_space))
-      new_title = new_title.substr(0, available_space - 5) + "...";
+    // Print title line safely
+    std::string title_margin;
+    if (show_line_numbers)
+      title_margin = std::string(lnw, ' ') + " │ ";
+    else
+      title_margin = std::string(left_padding, ' ') + "│ ";
 
-    std::string margin(margin_size, ' ');
-    std::print("{}│ File: {}\n", margin, new_title);
+    std::string title_str(title);
+    const int max_title_len = term_width - static_cast<int>(title_margin.length());
+    if (max_title_len > 0 && title_str.length() > static_cast<size_t>(max_title_len))
+      title_str = title_str.substr(0, max_title_len - 3) + "...";
+
+    std::print("{}{}\n", title_margin, title_str);
 
     // Print middle border
-    std::string middle_border;
-    for (int i = 0; i < term_width; i++)
-      if (i == margin_size && margin_size > 0)
-        middle_border += "┼";
-      else
-        middle_border += "─";
-    std::print("{}\n", middle_border);
+    std::print("{}\n", make_border("┼"));
 
-    // Print content lines
-    for (const auto &line : visible_lines) std::print("{}\n", line);
+    // Print content with proper bounds checking
+    int line_num = 1;
+    for (const auto &original_line : original_lines)
+    {
+      auto wrapped_lines = wrap_line(original_line, content_width);
+
+      for (size_t i = 0; i < wrapped_lines.size(); ++i)
+      {
+        // Build margin
+        std::string margin;
+        if (show_line_numbers)
+          if (i == 0)
+            margin = std::to_string(line_num) + std::string(lnw - std::to_string(line_num).length(), ' ') + " │ ";
+          else
+            margin = std::string(lnw, ' ') + " │ ";
+        else
+          margin = std::string(left_padding, ' ') + "│ ";
+
+        // Ensure line fits in terminal width
+        std::string_view line_content = wrapped_lines[i];
+        if (margin.length() + line_content.length() > static_cast<size_t>(term_width))
+          line_content = line_content.substr(0, term_width - margin.length());
+
+        std::print("{}{}\n", margin, line_content);
+      }
+      ++line_num;
+    }
 
     // Print bottom border
-    std::string bottom_border;
-    for (int i = 0; i < term_width; i++)
-      if (i == margin_size && margin_size > 0)
-        bottom_border += "┴";
-      else
-        bottom_border += "─";
-    std::print("{}\n", bottom_border);
+    std::print("{}\n", make_border("┴"));
   }
 
   void show_contents(std::string_view content, std::string_view title, int left_padding, bool show_line_numbers)
