@@ -75,6 +75,7 @@ void handle_args(std::vector<std::string> args)
       std::println(stderr, "Yes I know you want help and yes I won't do it. Use 'help' or '-h' instead.");
     }
     else if (args[1] == "show")         return show_file(args);
+    else if (args[1] == "list")         return show_all(args);
     else if (args[1] == "add")          return add_file(args);
     else if (args[1] == "remove")       return remove_file(args);
     else if (args[1] == "alias")        return add_alias(args);
@@ -84,6 +85,30 @@ void handle_args(std::vector<std::string> args)
   }
 }
 
+void show_all(std::vector<std::string> args)
+{
+  if (args.size() != 2)
+  {
+    std::println(stderr, "Usage: {} list", args[0]);
+    return;
+  }
+
+  jsn::value data;
+  if (!meow::get_json(DATA_PATH(), data))
+    return;
+
+  auto &files = meow::ensure_array(data, "files");
+
+  std::println("  {:<20} {}", "Name", "Path");
+  std::println("{:-<20} {:-<30}", "", "", "");
+
+  int index = 1;
+  for (auto &f : files)
+    std::println("  {:<20} {}",
+      f["name"].string_opt().value_or("<no name>"),
+      f["path"].string_opt().value_or("<no path>")
+    );
+}
 // show_file
 void show_file(std::vector<std::string> args)
 {

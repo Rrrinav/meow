@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <termios.h>
-#include <csignal>
+#include <signal.h>
 #include <algorithm>
 #include <chrono>
 #include <thread>
