@@ -102,7 +102,6 @@ void show_all(std::vector<std::string> args)
   std::println("  {:<20} {}", "Name", "Path");
   std::println("{:-<20} {:-<30}", "", "", "");
 
-  int index = 1;
   for (auto &f : files)
     std::println("  {:<20} {}",
       f["name"].string_opt().value_or("<no name>"),

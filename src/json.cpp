@@ -644,7 +644,7 @@ namespace jsn
 
   bool parser::is_end() const noexcept { return pos >= input.size(); }
 
-  std::string parser::get_context(size_t length) const noexcept
+  std::string parser::get_context() const noexcept
   {
     int begin_pos = pos, end_pos = pos;
     for (size_t i = begin_pos; i > 0; --i)
@@ -664,7 +664,7 @@ namespace jsn
       }
     }
     // trim whitespace from start and end
-    for (size_t i = begin_pos; i < end_pos; ++i)
+    for (int i = begin_pos; i < end_pos; ++i)
     {
       if (std::isalnum(input[i]))
         break;

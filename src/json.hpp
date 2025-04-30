@@ -222,7 +222,7 @@ namespace jsn
     [[nodiscard]] bool is_end() const noexcept;
 
     // Get context around the current position for error messages
-    [[nodiscard]] std::string get_context(size_t length = 10) const noexcept;
+    [[nodiscard]] std::string get_context() const noexcept;
     [[nodiscard]] parse_error make_error(const std::string &message) const;
 
     [[nodiscard]] std::string parse_string();

@@ -75,7 +75,7 @@ void handle_objs()
     if (bld::is_executable_outdated(f, object_path))
     {
       bld::log(bld::Log_type::INFO, "Compiling " + f + " to " + object_path);
-      if (bld::execute(bld::Command{COMPILER_NAME, "-c", f, "-o", object_path, CPP_STD, "-ggdb"}) < 0)
+      if (bld::execute(bld::Command{COMPILER_NAME, "-c", f, "-o", object_path, CPP_STD, "-ggdb", "-Wall", "-Wextra"}) < 0)
         exit(EXIT_FAILURE);
     }
     else
@@ -241,6 +241,7 @@ int main(int argc, char **argv)
   bld::Command cmd = {COMPILER_NAME, "-o", BUILD_FOLDER + EXECUTABLE, "-ggdb"};
   for (const auto &obj : objs) cmd.add_parts(obj);
   cmd.add_parts(CPP_STD);
+  cmd.add_parts("-Wall", "-Wextra");
 
   if (bld::execute(cmd) < 0)
     return 1;

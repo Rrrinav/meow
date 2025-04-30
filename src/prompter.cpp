@@ -145,7 +145,7 @@ void prompt::display_suggestions_vertical_limited(const std::vector<std::string>
     lines_used++;
   }
 
-  if (matches.size() > max_lines)
+  if ((int)matches.size() > max_lines)
   {
     std::cout << " ... and " << (matches.size() - max_lines) << " more matches\n";
     lines_used++;

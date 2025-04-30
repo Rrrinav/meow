@@ -158,6 +158,7 @@ void meow::todo::remove(std::vector<std::string> args)
 
 void meow::todo::list(std::vector<std::string> args)
 {
+  (void)args; //Will use later maybe
   jsn::value data;
   if (!meow::get_json(paths::data_path(), data))
     return;
@@ -174,7 +175,7 @@ void meow::todo::list(std::vector<std::string> args)
   std::cout << "\n\033[1;33m───────────────────────────── 󱙵  Your todos 󱙵  ─────────────────────────────\033[0m\n\n";
 
   int index = 1;
-  for (int i = 0; i < todos.size(); ++i)
+  for (int i = 0; i < (int)todos.size(); ++i)
   {
     auto item = todos[i];
     const auto &obj = item.as_object();
@@ -199,7 +200,7 @@ void meow::todo::list(std::vector<std::string> args)
     std::cout << " \033[2m\033[0m           \033[34mdue-date :\033[0m " << due_date << "\n";
 
     std::cout << " \033[2m\033[0m           \033[34mtime-left:\033[0m " << (invalid_time ? "\033[2;31minvalid date\033[0m" : timeleft) << "\n";
-    if (todos.size() - 1 == i) continue;
+    if ((int)todos.size() - 1 == i) continue;
     std::cout << " \033[2m    ────────────────────────────────────────────────────────────\033[0m\n";
   }
   std::cout << " \033[2m  └─────────────────────────────────────────────────────────────\033[0m\n";

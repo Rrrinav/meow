@@ -236,7 +236,7 @@ namespace meow
       const auto &line = original_lines[i];
 
       // Only wrap if needed to avoid unnecessary work
-      auto wraps = (line.length() <= content_width) ? std::vector<std::string>{std::string(line)} : wrap_line(line, content_width);
+      auto wraps = ((int)line.length() <= content_width) ? std::vector<std::string>{std::string(line)} : wrap_line(line, content_width);
 
       // Cache the line number string to avoid recalculating
       std::string line_number;
@@ -268,6 +268,7 @@ namespace meow
   void simple_cat(std::vector<std::string> original_lines, std::string_view title, int term_width, int term_height, size_t left_padding,
                   bool show_line_numbers)
   {
+    (void)term_height;  // Unused in this function
     // Safely calculate line number width
     int lnw = 0;
     if (show_line_numbers && !original_lines.empty())
@@ -410,7 +411,7 @@ namespace meow
 
         // Only update the content area (efficient partial update)
         const int content_start_row = 4;
-        const int visible_end = std::min(offset + view_lines, static_cast<int>(visible_lines.size()));
+        //const int visible_end = std::min(offset + view_lines, static_cast<int>(visible_lines.size()));
 
         // Clear content area if offset changed
         if (offset != prev_offset)
@@ -420,7 +421,7 @@ namespace meow
         for (int i = 0; i < view_lines; ++i)
         {
           int idx = i + offset;
-          if (idx < visible_lines.size())
+          if (idx < (int)visible_lines.size())
           {
             std::print("\033[{};1H", i + content_start_row);
             std::print("{}", visible_lines[idx]);
@@ -438,7 +439,7 @@ namespace meow
 
         std::print("\033[1;38;5;248m");
         std::string footer = std::format(" PgUp/PgDn | Line: {}/{} ({:3}%) | q:quit", offset + 1, visible_lines.empty() ? 1 : visible_lines.size(), percentage);
-        int visible_chars = 0;
+        //int visible_chars = 0;
         if (footer.size() + 3 > static_cast<size_t>(term_width))  // +3 for up/down arrows
           footer = footer.substr(0, term_width - 7) + "...\033[0m";
         std::print("\033[{};1H\033[2K ↑↓{}", term_height, footer);
