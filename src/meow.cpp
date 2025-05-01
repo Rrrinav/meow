@@ -45,28 +45,29 @@ void handle_args(std::vector<std::string> args)
       std::println("  Options without args:");
       std::println("     help                         Show this help message");
       std::println("     version                      Show the version information");
+      std::println("     list                         List all the files with their path");
       std::println();
       std::println("  Options with args:");
       std::println();
       std::println("    --------------------File commands--------------------");
       std::println();
       std::println("     open <file>                  Open a file in the default editor");
-      std::println("     show <file>/<alias>          cat or bat the file or alias added to meow");
+      std::println("     show <file|alias>            Cat or bat the file or alias added to meow");
       std::println("     add <path>                   Add a file to meow");
       std::println("     remove <file>                Remove a file from meow");
-      std::println("     alias <alias> <file>         Alias a file name to call it using alias");
+      std::println("     alias <file|alias>           Alias a file name to call it using alias");
       std::println("     remove-alias <alias>         Remove an alias");
       std::println();
       std::println("    --------------------TODO commands--------------------");
       std::println();
       std::println("     todo                          Open todo repl");
       std::println("     todo add <todo>               Add a todo");
-      std::println("     todo remove <todo no.>        Remove a todo");
+      std::println("     todo remove <todo no.|name>   Remove a todo");
       return;
     }
     else if (args[1] == "version" || args[1] == "-v")
     {
-      std::println("Version: 0.0.1");
+      std::println("IDK the version system properly!");
       return;
     }
     else if (args[1] == "--help")
